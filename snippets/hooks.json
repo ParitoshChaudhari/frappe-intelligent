@@ -1,0 +1,39 @@
+{
+  "Doc Events Hook": {
+    "prefix": "frappe-hook-doc-events",
+    "body": [
+      "doc_events = {",
+      "\t\"${1:DocTypeName}\": {",
+      "\t\t\"validate\": \"${2:my_app.controllers.custom_validate}\",",
+      "\t\t\"on_submit\": \"${3:my_app.controllers.custom_on_submit}\"",
+      "\t}",
+      "}"
+    ],
+    "description": "Standard Frappe doc_events hook snippet"
+  },
+  "Override DocType Class Hook": {
+    "prefix": "frappe-hook-override-class",
+    "body": [
+      "override_doctype_class = {",
+      "\t\"${1:DocTypeName}\": \"${2:my_app.overrides.CustomClass}\"",
+      "}"
+    ],
+    "description": "override_doctype_class hook snippet"
+  },
+  "Scheduler Events Hook": {
+    "prefix": "frappe-hook-scheduler",
+    "body": [
+      "scheduler_events = {",
+      "\t\"daily\": [",
+      "\t\t\"${1:my_app.tasks.daily_task}\"",
+      "\t],",
+      "\t\"cron\": {",
+      "\t\t\"${2:0 0 * * *}\": [",
+      "\t\t\t\"${3:my_app.tasks.nightly_job}\"",
+      "\t\t]",
+      "\t}",
+      "}"
+    ],
+    "description": "scheduler_events hook snippet"
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "Frappe Form Script": {
+    "prefix": "frappe-form-script",
+    "body": [
+      "frappe.ui.form.on('${1:DocTypeName}', {",
+      "\trefresh(frm) {",
+      "\t\t${0}",
+      "\t},",
+      "\tonload(frm) {",
+      "\t\t",
+      "\t},",
+      "\tvalidate(frm) {",
+      "\t\t",
+      "\t}",
+      "});"
+    ],
+    "description": "Standard Frappe Form Client Script Boilerplate"
+  },
+  "Frappe Call AJAX": {
+    "prefix": "frappe-call",
+    "body": [
+      "frappe.call({",
+      "\tmethod: '${1:app.api.method_name}',",
+      "\targs: {",
+      "\t\t${2}",
+      "\t},",
+      "\tfreeze: true,",
+      "\tfreeze_message: __('${3:Processing...}'),",
+      "\tcallback: function(r) {",
+      "\t\tif (r.message) {",
+      "\t\t\t${0}",
+      "\t\t}",
+      "\t}",
+      "});"
+    ],
+    "description": "frappe.call asynchronous backend invocation"
+  },
+  "Add Custom Button": {
+    "prefix": "frappe-add-button",
+    "body": [
+      "frm.add_custom_button(__('${1:Button Label}'), () => {",
+      "\t${0}",
+      "}, __('${2:Actions}'));"
+    ],
+    "description": "frm.add_custom_button snippet"
+  },
+  "Set Link Query": {
+    "prefix": "frappe-set-query",
+    "body": [
+      "frm.set_query('${1:fieldname}', () => {",
+      "\treturn {",
+      "\t\tfilters: {",
+      "\t\t\t${2:is_active}: 1",
+      "\t\t}",
+      "\t};",
+      "});"
+    ],
+    "description": "frm.set_query link filtering snippet"
+  },
+  "Frappe Msgprint / Toast": {
+    "prefix": "frappe-msgprint",
+    "body": [
+      "frappe.msgprint(__('${1:Message text}'));"
+    ],
+    "description": "frappe.msgprint snippet"
+  },
+  "Frappe Show Alert": {
+    "prefix": "frappe-show-alert",
+    "body": [
+      "frappe.show_alert({ message: __('${1:Notification}'), indicator: '${2|green,blue,orange,red|}' }, ${3:5});"
+    ],
+    "description": "frappe.show_alert toast notification"
+  },
+  "Frappe xcall (Modern Promise RPC)": {
+    "prefix": "frappe-xcall",
+    "body": [
+      "const ${1:result} = await frappe.xcall('${2:app.api.method_name}', {",
+      "\t${3:param}: ${4:value}",
+      "});",
+      "${0}"
+    ],
+    "description": "frappe.xcall Promise-based RPC execution"
+  },
+  "ListView Settings": {
+    "prefix": "frappe-listview-settings",
+    "body": [
+      "frappe.listview_settings['${1:DocTypeName}'] = {",
+      "\tadd_fields: [${2:'status', 'customer_name'}],",
+      "\tget_indicator(doc) {",
+      "\t\tif (doc.status === \"${3:Paid}\") {",
+      "\t\t\treturn [__(\"${3:Paid}\"), \"green\", \"status,=,${3:Paid}\"];",
+      "\t\t}",
+      "\t},",
+      "\tonload(listview) {",
+      "\t\t${0}",
+      "\t}",
+      "};"
+    ],
+    "description": "Frappe ListView Customization Settings Boilerplate"
+  },
+  "TreeView Settings": {
+    "prefix": "frappe-treeview-settings",
+    "body": [
+      "frappe.treeview_settings['${1:DocTypeName}'] = {",
+      "\tget_tree_nodes: '${2:app.api.get_children}',",
+      "\tget_tree_root: '${3:All Groups}',",
+      "\tonrender(node) {",
+      "\t\t${0}",
+      "\t}",
+      "};"
+    ],
+    "description": "Frappe TreeView Settings Boilerplate"
+  },
+  "Web Form Script": {
+    "prefix": "frappe-webform-script",
+    "body": [
+      "frappe.ready(function() {",
+      "\tfrappe.web_form.on('onload', () => {",
+      "\t\t${0}",
+      "\t});",
+      "\tfrappe.web_form.on('${1:fieldname}', (field, value) => {",
+      "\t\t",
+      "\t});",
+      "\tfrappe.web_form.validate = () => {",
+      "\t\treturn true;",
+      "\t};",
+      "});"
+    ],
+    "description": "Frappe Portal Web Form Client Script Boilerplate"
+  },
+  "Child Table Total Calculation": {
+    "prefix": "frappe-calc-child-total",
+    "body": [
+      "let total = 0;",
+      "(frm.doc.${1:items} || []).forEach(row => {",
+      "\ttotal += flt(row.${2:amount});",
+      "});",
+      "frm.set_value('${3:total_amount}', total);"
+    ],
+    "description": "Loop over child table rows and sum amounts into parent form field"
+  },
+  "Frappe Prompt Dialog": {
+    "prefix": "frappe-prompt",
+    "body": [
+      "frappe.prompt([",
+      "\t{",
+      "\t\tfieldname: '${1:reason}',",
+      "\t\tlabel: __('${2:Reason}'),",
+      "\t\tfieldtype: '${3|Small Text,Data,Select,Date|}',",
+      "\t\treqd: 1",
+      "\t}",
+      "], (values) => {",
+      "\t${0}",
+      "}, __('${4:Enter Details}'), __('${5:Submit}'));"
+    ],
+    "description": "Display an input prompt dialog with validation"
+  },
+  "Frappe Confirm Dialog": {
+    "prefix": "frappe-confirm",
+    "body": [
+      "frappe.confirm(",
+      "\t__('${1:Are you sure you want to proceed?}'),",
+      "\t() => {",
+      "\t\t// If Yes",
+      "\t\t${0}",
+      "\t},",
+      "\t() => {",
+      "\t\t// If No",
+      "\t}",
+      ");"
+    ],
+    "description": "Display a confirmation modal dialog"
+  },
+  "Frappe UI Dialog": {
+    "prefix": "frappe-dialog",
+    "body": [
+      "const d = new frappe.ui.Dialog({",
+      "\ttitle: __('${1:Dialog Title}'),",
+      "\tfields: [",
+      "\t\t{",
+      "\t\t\tfieldname: '${2:item}',",
+      "\t\t\tlabel: __('${3:Item}'),",
+      "\t\t\tfieldtype: 'Link',",
+      "\t\t\toptions: '${4:Item}',",
+      "\t\t\treqd: 1",
+      "\t\t}",
+      "\t],",
+      "\tprimary_action_label: __('${5:Save}'),",
+      "\tprimary_action(values) {",
+      "\t\t${0}",
+      "\t\td.hide();",
+      "\t}",
+      "});",
+      "d.show();"
+    ],
+    "description": "Frappe standard UI Dialog modal with fields"
+  },
+  "Realtime WebSocket Event Listener": {
+    "prefix": "frappe-realtime-on",
+    "body": [
+      "frappe.realtime.on('${1:event_name}', (data) => {",
+      "\t${0}",
+      "});"
+    ],
+    "description": "Listen for real-time WebSocket events from backend"
+  }
+}

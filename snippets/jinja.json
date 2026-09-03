@@ -1,0 +1,71 @@
+{
+  "Frappe Jinja Format Value": {
+    "prefix": "frappe-jinja-format",
+    "body": [
+      "{{ frappe.format(${1:doc.fieldname}, {'fieldtype': '${2:Currency}'}) }}"
+    ],
+    "description": "Format field value according to system settings in Jinja"
+  },
+  "Frappe Jinja Get Doc": {
+    "prefix": "frappe-jinja-get-doc",
+    "body": [
+      "{% set ${1:item} = frappe.get_doc('${2:DocType}', ${3:doc.item_code}) %}"
+    ],
+    "description": "Fetch a document in Jinja template"
+  },
+  "Frappe Jinja Loop": {
+    "prefix": "frappe-jinja-for",
+    "body": [
+      "{% for ${1:row} in ${2:doc.items} %}",
+      "\t<tr>",
+      "\t\t<td>{{ ${1:row}.idx }}</td>",
+      "\t\t<td>{{ ${1:row}.${3:item_name} }}</td>",
+      "\t\t<td>{{ ${1:row}.${4:amount} }}</td>",
+      "\t</tr>",
+      "{% endfor %}"
+    ],
+    "description": "Iterate through Child Table rows in Jinja"
+  },
+  "Frappe Jinja Condition": {
+    "prefix": "frappe-jinja-if",
+    "body": [
+      "{% if ${1:doc.status == 'Completed'} %}",
+      "\t${0}",
+      "{% endif %}"
+    ],
+    "description": "Conditional block in Jinja"
+  },
+  "Jinja Child Table Loop": {
+    "prefix": "jinja-child-table",
+    "body": [
+      "<table class=\"table table-bordered\">",
+      "\t<thead>",
+      "\t\t<tr>",
+      "\t\t\t<th>{{ _(\"Sr\") }}</th>",
+      "\t\t\t<th>{{ _(\"Item\") }}</th>",
+      "\t\t\t<th>{{ _(\"Qty\") }}</th>",
+      "\t\t\t<th>{{ _(\"Amount\") }}</th>",
+      "\t\t</tr>",
+      "\t</thead>",
+      "\t<tbody>",
+      "\t\t{% for row in doc.${1:items} %}",
+      "\t\t<tr>",
+      "\t\t\t<td>{{ row.idx }}</td>",
+      "\t\t\t<td>{{ row.${2:item_name} }}</td>",
+      "\t\t\t<td>{{ row.${3:qty} }}</td>",
+      "\t\t\t<td>{{ row.get_formatted(\"${4:amount}\") }}</td>",
+      "\t\t</tr>",
+      "\t\t{% endfor %}",
+      "\t</tbody>",
+      "</table>"
+    ],
+    "description": "Loop over DocType child table rows in HTML Jinja template"
+  },
+  "Jinja Currency Format": {
+    "prefix": "jinja-format-currency",
+    "body": [
+      "{{ frappe.format_value(doc.${1:grand_total}, {\"fieldtype\": \"Currency\"}) }}"
+    ],
+    "description": "Format currency number with Frappe formatting rules in Jinja"
+  }
+}

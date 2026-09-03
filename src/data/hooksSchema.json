@@ -1,0 +1,244 @@
+{
+  "hooks": [
+    {
+      "name": "app_name",
+      "type": "str",
+      "description": "The unique internal machine name of the Frappe application (e.g. 'erpnext').",
+      "example": "app_name = \"my_custom_app\""
+    },
+    {
+      "name": "app_title",
+      "type": "str",
+      "description": "The human-readable display title of the application.",
+      "example": "app_title = \"Custom ERP Enhancements\""
+    },
+    {
+      "name": "app_publisher",
+      "type": "str",
+      "description": "Name or organization of the application author.",
+      "example": "app_publisher = \"Frappe Technologies Pvt. Ltd.\""
+    },
+    {
+      "name": "app_description",
+      "type": "str",
+      "description": "Short summary description of the application features.",
+      "example": "app_description = \"Human Resource & Payroll Management Module for Frappe\""
+    },
+    {
+      "name": "app_email",
+      "type": "str",
+      "description": "Maintainer / author support email address.",
+      "example": "app_email = \"support@example.com\""
+    },
+    {
+      "name": "app_license",
+      "type": "str",
+      "description": "Open-source / proprietary license type.",
+      "example": "app_license = \"MIT\""
+    },
+    {
+      "name": "app_logo_url",
+      "type": "str",
+      "description": "Relative URL path to the application icon/logo.",
+      "example": "app_logo_url = \"/assets/my_app/images/logo.png\""
+    },
+    {
+      "name": "app_include_js",
+      "type": "str | list[str]",
+      "description": "Global desk JavaScript bundle files loaded on every authenticated page.",
+      "example": "app_include_js = \"/assets/my_app/js/my_app.bundle.js\""
+    },
+    {
+      "name": "app_include_css",
+      "type": "str | list[str]",
+      "description": "Global desk CSS stylesheet bundle loaded on every authenticated page.",
+      "example": "app_include_css = \"/assets/my_app/css/my_app.bundle.css\""
+    },
+    {
+      "name": "web_include_js",
+      "type": "str | list[str]",
+      "description": "Public website / portal JavaScript bundle files.",
+      "example": "web_include_js = \"/assets/my_app/js/portal.bundle.js\""
+    },
+    {
+      "name": "web_include_css",
+      "type": "str | list[str]",
+      "description": "Public website / portal CSS stylesheets.",
+      "example": "web_include_css = \"/assets/my_app/css/portal.bundle.css\""
+    },
+    {
+      "name": "doc_events",
+      "type": "dict[str, dict[str, str | list[str]]]",
+      "description": "Subscribes to standard DocType controller events across any app (e.g. before_insert, validate, on_submit, on_cancel).",
+      "example": "doc_events = {\n    \"Sales Invoice\": {\n        \"validate\": \"my_app.controllers.sales_invoice.custom_validate\",\n        \"on_submit\": \"my_app.controllers.sales_invoice.on_submit_handler\"\n    },\n    \"*\": {\n        \"on_update\": \"my_app.audit.log_doc_change\"\n    }\n}"
+    },
+    {
+      "name": "override_doctype_class",
+      "type": "dict[str, str]",
+      "description": "Overrides standard DocType Python controller classes with custom subclassed implementations.",
+      "example": "override_doctype_class = {\n    \"ToDo\": \"my_app.overrides.CustomToDo\"\n}"
+    },
+    {
+      "name": "override_whitelisted_methods",
+      "type": "dict[str, str]",
+      "description": "Overrides whitelisted Python backend endpoints with custom implementations.",
+      "example": "override_whitelisted_methods = {\n    \"frappe.desk.form.save.savedocs\": \"my_app.api.custom_savedocs\"\n}"
+    },
+    {
+      "name": "override_doctype_dashboards",
+      "type": "dict[str, str]",
+      "description": "Overrides DocType Dashboard connections and transaction charts.",
+      "example": "override_doctype_dashboards = {\n    \"Customer\": \"my_app.overrides.dashboard.get_data\"\n}"
+    },
+    {
+      "name": "scheduler_events",
+      "type": "dict[str, list[str] | dict[str, list[str]]]",
+      "description": "Registers scheduled cron background jobs (all, hourly, daily, weekly, monthly, cron).",
+      "example": "scheduler_events = {\n    \"daily\": [\n        \"my_app.tasks.daily_lead_cleanup\"\n    ],\n    \"cron\": {\n        \"0 2 * * *\": [\n            \"my_app.tasks.nightly_sync\"\n        ]\n    }\n}"
+    },
+    {
+      "name": "doctype_js",
+      "type": "dict[str, str]",
+      "description": "Injects additional JavaScript files into standard Form views.",
+      "example": "doctype_js = {\n    \"Customer\": \"public/js/customer.js\"\n}"
+    },
+    {
+      "name": "doctype_list_js",
+      "type": "dict[str, str]",
+      "description": "Injects custom JavaScript into DocType List Views.",
+      "example": "doctype_list_js = {\n    \"Item\": \"public/js/item_list.js\"\n}"
+    },
+    {
+      "name": "doctype_tree_js",
+      "type": "dict[str, str]",
+      "description": "Injects custom JavaScript into Tree-structured DocType views.",
+      "example": "doctype_tree_js = {\n    \"Account\": \"public/js/account_tree.js\"\n}"
+    },
+    {
+      "name": "page_js",
+      "type": "dict[str, str]",
+      "description": "Injects custom JavaScript into Frappe standard or custom Pages.",
+      "example": "page_js = {\n    \"pos\": \"public/js/pos_custom.js\"\n}"
+    },
+    {
+      "name": "fixtures",
+      "type": "list[str | dict]",
+      "description": "Exports custom records (Custom Fields, Property Setters, Print Formats, Workspaces) into JSON fixtures during 'bench export-fixtures'.",
+      "example": "fixtures = [\n    {\"dt\": \"Custom Field\", \"filters\": [[\"module\", \"=\", \"Custom App\"]]}\n]"
+    },
+    {
+      "name": "permission_query_conditions",
+      "type": "dict[str, str]",
+      "description": "Python function returning custom SQL WHERE conditions to enforce row-level security.",
+      "example": "permission_query_conditions = {\n    \"Employee\": \"my_app.permissions.get_employee_permission_query_conditions\"\n}"
+    },
+    {
+      "name": "has_permission",
+      "type": "dict[str, str]",
+      "description": "Python function returning a boolean permission check for documents.",
+      "example": "has_permission = {\n    \"Employee\": \"my_app.permissions.has_employee_permission\"\n}"
+    },
+    {
+      "name": "jinja",
+      "type": "dict[str, str | dict[str, str]]",
+      "description": "Registers custom methods and filters available in Jinja print formats and web templates.",
+      "example": "jinja = {\n    \"methods\": \"my_app.utils.jinja_methods\",\n    \"filters\": \"my_app.utils.jinja_filters\"\n}"
+    },
+    {
+      "name": "website_route_rules",
+      "type": "list[dict[str, str]]",
+      "description": "Custom URL routing patterns and endpoints for portal pages.",
+      "example": "website_route_rules = [\n    {\"from_route\": \"/portal/dashboard\", \"to_route\": \"my_portal_dashboard\"}\n]"
+    },
+    {
+      "name": "website_context",
+      "type": "dict[str, str]",
+      "description": "Python function modifying or injecting template context on web pages.",
+      "example": "website_context = {\n    \"favicon\": \"/assets/my_app/images/favicon.ico\",\n    \"splash_image\": \"/assets/my_app/images/splash.png\"\n}"
+    },
+    {
+      "name": "portal_menu_items",
+      "type": "list[dict]",
+      "description": "Adds menu items to the customer portal sidebar menu.",
+      "example": "portal_menu_items = [\n    {\"title\": \"My Projects\", \"route\": \"/projects\", \"role\": \"Customer\"}\n]"
+    },
+    {
+      "name": "before_install",
+      "type": "str",
+      "description": "Python function executed before app installation onto a site.",
+      "example": "before_install = \"my_app.setup.install.before_install\""
+    },
+    {
+      "name": "after_install",
+      "type": "str",
+      "description": "Python function executed immediately after app installation.",
+      "example": "after_install = \"my_app.setup.install.after_install\""
+    },
+    {
+      "name": "before_migrate",
+      "type": "str",
+      "description": "Python function executed before bench migrate runs database schema migrations.",
+      "example": "before_migrate = \"my_app.setup.migrate.before_migrate\""
+    },
+    {
+      "name": "after_migrate",
+      "type": "str",
+      "description": "Python function executed immediately after bench migrate completes.",
+      "example": "after_migrate = \"my_app.setup.migrate.after_migrate\""
+    },
+    {
+      "name": "before_uninstall",
+      "type": "str",
+      "description": "Python function executed before app is uninstalled from site.",
+      "example": "before_uninstall = \"my_app.setup.uninstall.before_uninstall\""
+    },
+    {
+      "name": "after_uninstall",
+      "type": "str",
+      "description": "Python function executed after app is uninstalled.",
+      "example": "after_uninstall = \"my_app.setup.uninstall.after_uninstall\""
+    },
+    {
+      "name": "boot_session",
+      "type": "str",
+      "description": "Python function adding custom values into frappe.boot sent to client on startup.",
+      "example": "boot_session = \"my_app.utils.boot.boot_session\""
+    },
+    {
+      "name": "on_session_creation",
+      "type": "list[str]",
+      "description": "List of Python functions executed when a user logs in.",
+      "example": "on_session_creation = [\n    \"my_app.security.log_login_activity\"\n]"
+    },
+    {
+      "name": "on_logout",
+      "type": "list[str]",
+      "description": "List of Python functions executed when a user logs out.",
+      "example": "on_logout = [\n    \"my_app.security.log_logout_activity\"\n]"
+    },
+    {
+      "name": "standard_queries",
+      "type": "dict",
+      "description": "Overrides standard Link field autocomplete query methods globally.",
+      "example": "standard_queries = {\"Customer\": \"my_app.queries.customer_query\"}"
+    },
+    {
+      "name": "user_data_fields",
+      "type": "list[dict]",
+      "description": "GDPR user personal data export and erasure field mappings.",
+      "example": "user_data_fields = [\n    {\"doctype\": \"Contact\", \"filter_by\": \"email\", \"partial\": 1}\n]"
+    },
+    {
+      "name": "auto_cancel_exempted_doctypes",
+      "type": "list[str]",
+      "description": "DocTypes exempted from automatic cancellation when parent document is cancelled.",
+      "example": "auto_cancel_exempted_doctypes = [\"Payment Entry\"]"
+    },
+    {
+      "name": "required_apps",
+      "type": "list[str]",
+      "description": "Declares prerequisite Frappe apps required before installing this app.",
+      "example": "required_apps = [\"erpnext\", \"hrms\"]"
+    }
+  ]
+}

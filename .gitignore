@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Compilation Output
+out/
+dist/
+build/
+
+# VS Code Test & Extension Cache
+.vscode-test/
+*.vsix
+
+# Python & Bench Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.frappe/
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs & Runtime Data
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+locks/
+
+# Environment Configurations
+.env
+.env.local

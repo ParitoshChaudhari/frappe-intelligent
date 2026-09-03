@@ -1,0 +1,330 @@
+{
+  "name": "frappe-intelligent",
+  "displayName": "Frappe Intelligent",
+  "description": "Intelligent Frappe Framework IntelliSense, context-aware suggestions, hover documentation, Frappe Explorer sidebar, Bench CLI tools, Webview Form Previewer, and source code intelligence for Python and JavaScript.",
+  "version": "0.0.1",
+  "publisher": "frappe-intelligent",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ParitoshChaudhari/frappe-intelligent"
+  },
+  "bugs": {
+    "url": "https://github.com/ParitoshChaudhari/frappe-intelligent/issues"
+  },
+  "homepage": "https://github.com/ParitoshChaudhari/frappe-intelligent#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "frappe",
+    "erpnext",
+    "python",
+    "javascript",
+    "intellisense",
+    "autocomplete",
+    "bench"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:html",
+    "workspaceContains:**/apps.txt",
+    "workspaceContains:**/hooks.py",
+    "workspaceContains:apps/frappe"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "frappe-explorer",
+          "title": "Frappe Explorer",
+          "icon": "$(package)"
+        }
+      ]
+    },
+    "views": {
+      "frappe-explorer": [
+        {
+          "id": "frappeIntelligentView",
+          "name": "Apps, Modules & DocTypes"
+        }
+      ]
+    },
+    "snippets": [
+      {
+        "language": "python",
+        "path": "./snippets/python.json"
+      },
+      {
+        "language": "javascript",
+        "path": "./snippets/javascript.json"
+      },
+      {
+        "language": "html",
+        "path": "./snippets/jinja.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "frappeIntelligent.selectActiveSite",
+        "title": "Frappe: Select Active Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.previewDocTypeForm",
+        "title": "Frappe: Preview Form Layout",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldReport",
+        "title": "Frappe: Scaffold Script Report",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldPage",
+        "title": "Frappe: Scaffold Desk Page",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldPatch",
+        "title": "Frappe: Scaffold Migration Patch",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldUnitTest",
+        "title": "Frappe: Scaffold Unit Test (FrappeTestCase)",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldWebForm",
+        "title": "Frappe: Scaffold Web Form Script",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldListView",
+        "title": "Frappe: Scaffold ListView Settings",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldClientScript",
+        "title": "Frappe: Scaffold Custom Client Script",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldServerScript",
+        "title": "Frappe: Scaffold Server Script / Webhook Handler",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldWebPage",
+        "title": "Frappe: Scaffold Portal / Website Web Page",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.scaffoldPrintFormat",
+        "title": "Frappe: Scaffold Print Format Template",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.rebuildIndex",
+        "title": "Frappe: Rebuild Workspace Index",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.generateTypeStubs",
+        "title": "Frappe: Generate Type Stubs (.pyi & .d.ts)",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.showVersionInfo",
+        "title": "Frappe: Show Detected Version & Apps",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.refreshTreeView",
+        "title": "Frappe: Refresh TreeView",
+        "icon": "$(refresh)",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchClearCache",
+        "title": "Frappe: Bench Clear Cache",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchMigrate",
+        "title": "Frappe: Bench Migrate",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchRestart",
+        "title": "Frappe: Bench Restart",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchBuild",
+        "title": "Frappe: Bench Build",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchConsole",
+        "title": "Frappe: Open Bench Console",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchBackup",
+        "title": "Frappe: Bench Backup",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchNewSite",
+        "title": "Frappe: Bench New Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchDropSite",
+        "title": "Frappe: Bench Drop Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchReinstall",
+        "title": "Frappe: Bench Reinstall Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchRestore",
+        "title": "Frappe: Bench Restore Database Backup",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchNewApp",
+        "title": "Frappe: Bench New App",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchGetApp",
+        "title": "Frappe: Bench Get App",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchInstallApp",
+        "title": "Frappe: Bench Install App on Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchUninstallApp",
+        "title": "Frappe: Bench Uninstall App from Site",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchListApps",
+        "title": "Frappe: Bench List Apps",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchExecute",
+        "title": "Frappe: Bench Execute Method",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchDoctor",
+        "title": "Frappe: Bench Doctor",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchResetPerms",
+        "title": "Frappe: Bench Reset Permissions",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.benchRunTests",
+        "title": "Frappe: Bench Run Unit Tests",
+        "category": "Frappe Intelligent"
+      }
+    ],
+
+    "menus": {
+      "editor/title": [
+        {
+          "command": "frappeIntelligent.previewDocTypeForm",
+          "when": "resourceExtname == .json",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "frappeIntelligent.refreshTreeView",
+          "when": "view == frappeIntelligentView",
+          "group": "navigation"
+        },
+        {
+          "command": "frappeIntelligent.selectActiveSite",
+          "when": "view == frappeIntelligentView",
+          "group": "navigation"
+        },
+        {
+          "command": "frappeIntelligent.rebuildIndex",
+          "when": "view == frappeIntelligentView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Frappe Intelligent",
+      "properties": {
+        "frappeIntelligent.enablePythonStubs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically generate .pyi type stubs for Frappe DocTypes in .frappe/typings"
+        },
+        "frappeIntelligent.enableJsStubs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically generate .d.ts type declarations for Frappe client scripts in .frappe/typings"
+        },
+        "frappeIntelligent.enableDeprecationWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show real-time diagnostic warnings for deprecated Frappe APIs according to detected version"
+        },
+        "frappeIntelligent.autoConfigurePythonEnv": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect bench/env/bin/python and configure workspace python.defaultInterpreterPath and extraPaths"
+        },
+        "frappeIntelligent.defaultFrappeVersion": {
+          "type": "string",
+          "enum": [
+            "v13",
+            "v14",
+            "v15",
+            "v16"
+          ],
+          "default": "v15",
+          "description": "Fallback Frappe version if version detection from workspace fails"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && mocha --require out/test/setup.js out/test/**/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@types/mocha": "^10.0.6",
+    "typescript": "^5.3.3",
+    "mocha": "^10.2.0"
+  }
+}

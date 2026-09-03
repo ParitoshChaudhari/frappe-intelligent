@@ -1,0 +1,719 @@
+{
+  "frm": [
+    {
+      "name": "set_value",
+      "module": "frm",
+      "signature": "frm.set_value(fieldname: string | object, value?: any): Promise<void>",
+      "returnType": "Promise<void>",
+      "returnDescription": "Promise that resolves once the field value has been set and UI inputs re-rendered.",
+      "docstring": "Sets the value of a field on the current open Form and automatically updates the screen UI. If passing an object, it sets multiple fields simultaneously.",
+      "example": "# 1. Set a single field value:\nfrm.set_value(\"posting_date\", frappe.datetime.nowdate());\n\n# 2. Set multiple fields simultaneously with a dictionary:\nfrm.set_value({\n    status: \"Approved\",\n    approved_by: frappe.session.user,\n    approval_date: frappe.datetime.nowdate()\n});",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string | object",
+          "structure": "\"customer\" | { status: \"Open\", priority: \"High\" }",
+          "optional": false,
+          "description": "Fieldname to update or dictionary object of multiple field-value pairs."
+        },
+        {
+          "name": "value",
+          "type": "any",
+          "structure": "\"Acme Corp\"",
+          "optional": true,
+          "description": "Value to assign (omit if fieldname is an object)."
+        }
+      ]
+    },
+    {
+      "name": "get_value",
+      "module": "frm",
+      "signature": "frm.get_value(fieldname: string) -> any",
+      "returnType": "any",
+      "returnDescription": "Current field value from the form document (same as frm.doc[fieldname]).",
+      "docstring": "Retrieves the current in-memory value of a field from the open form.",
+      "example": "const status = frm.get_value(\"status\");",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"status\"",
+          "optional": false,
+          "description": "The fieldname of the field to read."
+        }
+      ]
+    },
+    {
+      "name": "save",
+      "module": "frm",
+      "signature": "frm.save(action?: string, callback?: () => void, btn?: any): Promise<void>",
+      "returnType": "Promise<void>",
+      "returnDescription": "Promise resolving after document save completes.",
+      "docstring": "Triggers the standard form save or submit action and runs client validation handlers.",
+      "example": "frm.save();\nfrm.save(\"Submit\");",
+      "parameters": [
+        {
+          "name": "action",
+          "type": "string",
+          "structure": "\"Save\" | \"Submit\" | \"Update\" | \"Cancel\"",
+          "optional": true,
+          "default": "Save",
+          "description": "Form action lifecycle command to trigger."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback invoked after successful save response."
+        },
+        {
+          "name": "btn",
+          "type": "any",
+          "optional": true,
+          "description": "Triggering button element to freeze while saving."
+        }
+      ]
+    },
+    {
+      "name": "refresh",
+      "module": "frm",
+      "signature": "frm.refresh()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Re-renders the form UI and triggers the `refresh` event handler.",
+      "example": "frm.refresh();",
+      "parameters": []
+    },
+    {
+      "name": "refresh_field",
+      "module": "frm",
+      "signature": "frm.refresh_field(fieldname: string)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Re-renders and updates a specific field's input control on the screen. Call this after directly modifying frm.doc.fieldname or child tables.",
+      "example": "frm.doc.grand_total = 1500;\nfrm.refresh_field(\"grand_total\");",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"grand_total\" OR \"items\"",
+          "optional": false,
+          "description": "The fieldname of the field or child table to re-render."
+        }
+      ]
+    },
+    {
+      "name": "set_df_property",
+      "module": "frm",
+      "signature": "frm.set_df_property(fieldname: string, property: string, value: any)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Dynamically changes a DocField property (such as read_only, reqd, hidden, options, label, description) on the form.",
+      "example": "frm.set_df_property(\"reason\", \"reqd\", 1);\nfrm.set_df_property(\"rate\", \"read_only\", 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"reason\"",
+          "optional": false,
+          "description": "Target fieldname."
+        },
+        {
+          "name": "property",
+          "type": "string",
+          "structure": "\"reqd\" | \"read_only\" | \"hidden\" | \"options\" | \"label\" | \"description\"",
+          "optional": false,
+          "description": "DocField property name."
+        },
+        {
+          "name": "value",
+          "type": "any",
+          "structure": "1 | 0 | \"Label text\"",
+          "optional": false,
+          "description": "New property value."
+        }
+      ]
+    },
+    {
+      "name": "toggle_display",
+      "module": "frm",
+      "signature": "frm.toggle_display(fieldname: string | string[], show: boolean)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Shows or hides one or more fields based on a condition.",
+      "example": "frm.toggle_display(\"tax_id\", frm.doc.customer_type === \"Company\");",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string | string[]",
+          "structure": "\"tax_id\" OR [\"tax_id\", \"tax_category\"]",
+          "optional": false,
+          "description": "Fieldname or array of fieldnames."
+        },
+        {
+          "name": "show",
+          "type": "boolean",
+          "optional": false,
+          "description": "True to show field, False to hide."
+        }
+      ]
+    },
+    {
+      "name": "toggle_enable",
+      "module": "frm",
+      "signature": "frm.toggle_enable(fieldname: string | string[], enable: boolean)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Enables or disables (read-only) one or more fields based on a condition.",
+      "example": "frm.toggle_enable(\"posting_date\", frm.doc.docstatus === 0);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string | string[]",
+          "optional": false,
+          "description": "Fieldname or array of fieldnames."
+        },
+        {
+          "name": "enable",
+          "type": "boolean",
+          "optional": false,
+          "description": "True to enable (editable), False to disable."
+        }
+      ]
+    },
+    {
+      "name": "toggle_reqd",
+      "module": "frm",
+      "signature": "frm.toggle_reqd(fieldname: string | string[], reqd: boolean)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Sets one or more fields as mandatory or optional based on a condition.",
+      "example": "frm.toggle_reqd(\"passport_number\", frm.doc.is_international_travel === 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string | string[]",
+          "optional": false,
+          "description": "Fieldname or array of fieldnames."
+        },
+        {
+          "name": "reqd",
+          "type": "boolean",
+          "optional": false,
+          "description": "True to make mandatory, False to make optional."
+        }
+      ]
+    },
+    {
+      "name": "add_custom_button",
+      "module": "frm",
+      "signature": "frm.add_custom_button(label: string, action: () => void, group?: string): any",
+      "returnType": "jQuery",
+      "returnDescription": "jQuery button element.",
+      "docstring": "Adds a custom clickable action button to the top toolbar of the form.",
+      "example": "frm.add_custom_button(__(\"Invoice\"), () => make_invoice(), __(\"Create\"));",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "__(\"Process Invoice\")",
+          "optional": false,
+          "description": "Button display label."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "structure": "() => { /* action handler */ }",
+          "optional": false,
+          "description": "Click event handler function."
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "structure": "\"Actions\" | \"Create\"",
+          "optional": true,
+          "description": "Dropdown button group name; if omitted, creates a top-level button."
+        }
+      ]
+    },
+    {
+      "name": "clear_custom_buttons",
+      "module": "frm",
+      "signature": "frm.clear_custom_buttons()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Removes all custom buttons added to the form toolbar.",
+      "example": "frm.clear_custom_buttons();",
+      "parameters": []
+    },
+    {
+      "name": "set_query",
+      "module": "frm",
+      "signature": "frm.set_query(fieldname: string, query_fn: Function | object)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Applies custom filters to a Link or Dynamic Link field's dropdown search on the form.",
+      "example": "frm.set_query(\"customer\", function() {\n    return { filters: { \"disabled\": 0, \"customer_group\": \"Commercial\" } };\n});",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"customer\"",
+          "optional": false,
+          "description": "Name of the Link field."
+        },
+        {
+          "name": "query_fn",
+          "type": "Function | object",
+          "structure": "function() { return { filters: { disabled: 0 } }; }",
+          "optional": false,
+          "description": "Filter function returning query options dictionary."
+        }
+      ]
+    },
+    {
+      "name": "is_new",
+      "module": "frm",
+      "signature": "frm.is_new() -> boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if the document has not yet been saved into database.",
+      "docstring": "Checks if the current open form is a brand new unsaved record.",
+      "example": "if (frm.is_new()) {\n    frm.set_value(\"status\", \"Draft\");\n}",
+      "parameters": []
+    },
+    {
+      "name": "is_dirty",
+      "module": "frm",
+      "signature": "frm.is_dirty() -> boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if there are unsaved modifications on the form.",
+      "docstring": "Returns True if any field on the form has been modified since last save.",
+      "example": "if (frm.is_dirty()) {\n    console.log(\"Form has unsaved changes\");\n}",
+      "parameters": []
+    },
+    {
+      "name": "add_child",
+      "module": "frm",
+      "signature": "frm.add_child(table_fieldname: string, values?: object): object",
+      "returnType": "object",
+      "returnDescription": "The newly added child row object.",
+      "docstring": "Adds a new row to a child Table field on the current form.",
+      "example": "const row = frm.add_child(\"items\", {\n    item_code: \"ITEM-001\",\n    qty: 1,\n    rate: 100\n});\nfrm.refresh_field(\"items\");",
+      "parameters": [
+        {
+          "name": "table_fieldname",
+          "type": "string",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "Child Table fieldname on parent DocType."
+        },
+        {
+          "name": "values",
+          "type": "object",
+          "structure": "{\n    item_code: \"ITEM-001\",\n    qty: 2,\n    rate: 100.0\n}",
+          "optional": true,
+          "description": "Initial field values assigned to the new child row."
+        }
+      ]
+    },
+    {
+      "name": "set_intro",
+      "module": "frm",
+      "signature": "frm.set_intro(message: string, color?: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Displays a colored notification banner strip at the top of the form.",
+      "example": "frm.set_intro(__(\"This document is waiting for Manager Approval\"), \"orange\");",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string",
+          "structure": "__(\"This document is under audit review.\")",
+          "optional": false,
+          "description": "Banner message text to display above form header."
+        },
+        {
+          "name": "color",
+          "type": "string",
+          "structure": "\"blue\" | \"green\" | \"orange\" | \"red\" | \"yellow\"",
+          "optional": true,
+          "default": "blue",
+          "description": "Color theme of alert banner."
+        }
+      ]
+    },
+    {
+      "name": "call",
+      "module": "frm",
+      "signature": "frm.call(method: string, args?: object, callback?: (r: any) => void, btn?: any): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise resolving with method response.",
+      "docstring": "Invokes a Python controller method defined on this DocType directly for this specific document instance.",
+      "example": "frm.call({\n    method: \"calculate_taxes\",\n    args: { tax_rate: 18 },\n    freeze: true,\n    callback(r) {\n        frm.reload_doc();\n    }\n});",
+      "parameters": [
+        {
+          "name": "method",
+          "type": "string",
+          "structure": "\"recalculate_prices\"",
+          "optional": false,
+          "description": "Document controller method name or whitelisted API dot-path."
+        },
+        {
+          "name": "args",
+          "type": "object",
+          "structure": "{\n    param: \"value\"\n}",
+          "optional": true,
+          "description": "Arguments passed to controller method."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback executed with response payload."
+        },
+        {
+          "name": "btn",
+          "type": "any",
+          "optional": true,
+          "description": "Button element to freeze/animate while executing."
+        }
+      ]
+    },
+    {
+      "name": "reload_doc",
+      "module": "frm",
+      "signature": "frm.reload_doc()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Reloads the current document from the server and refreshes the form interface.",
+      "example": "frm.reload_doc();",
+      "parameters": []
+    },
+    {
+      "name": "print_doc",
+      "module": "frm",
+      "signature": "frm.print_doc()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Opens the print previewer dialog for this document.",
+      "example": "frm.print_doc();",
+      "parameters": []
+    },
+    {
+      "name": "email_doc",
+      "module": "frm",
+      "signature": "frm.email_doc(message?: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Opens the email composer dialog with this document attached as PDF.",
+      "example": "frm.email_doc();",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string",
+          "structure": "\"Please review the attached document.\"",
+          "optional": true,
+          "description": "Prefilled email message text."
+        }
+      ]
+    },
+    {
+      "name": "change_custom_button_type",
+      "module": "frm",
+      "signature": "frm.change_custom_button_type(label: string, group: string, type: string): void",
+      "returnType": "void",
+      "docstring": "Changes visual style / bootstrap color class of a custom button.",
+      "example": "frm.change_custom_button_type('Approve', null, 'primary');",
+      "returnDescription": "None (Applies bootstrap button styling).",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Process Order\"",
+          "optional": false,
+          "description": "Button label."
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "structure": "\"Actions\" | null",
+          "optional": true,
+          "description": "Button group name or null if top-level."
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "structure": "\"primary\" | \"danger\" | \"warning\" | \"success\" | \"info\"",
+          "optional": false,
+          "description": "Bootstrap button styling variant."
+        }
+      ]
+    },
+    {
+      "name": "clear_table",
+      "module": "frm",
+      "signature": "frm.clear_table(table_fieldname: string): void",
+      "returnType": "void",
+      "docstring": "Removes all child rows from specified child table field.",
+      "example": "frm.clear_table('items');\nfrm.refresh_field('items');",
+      "returnDescription": "None (Empties all rows from child table).",
+      "parameters": [
+        {
+          "name": "table_fieldname",
+          "type": "string",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "Child Table fieldname to clear."
+        }
+      ]
+    },
+    {
+      "name": "scroll_to_field",
+      "module": "frm",
+      "signature": "frm.scroll_to_field(fieldname: string): void",
+      "returnType": "void",
+      "docstring": "Smoothly scrolls form view to target field input.",
+      "example": "frm.scroll_to_field('grand_total');",
+      "returnDescription": "None (Animates form viewport to field).",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"grand_total\"",
+          "optional": false,
+          "description": "Target fieldname to smoothly scroll form viewport into focus."
+        }
+      ]
+    },
+    {
+      "name": "disable_save",
+      "module": "frm",
+      "signature": "frm.disable_save(disable: boolean = true): void",
+      "returnType": "void",
+      "docstring": "Disables standard Save button in form toolbar.",
+      "example": "frm.disable_save(true);",
+      "returnDescription": "None (Hides/disables form Save button).",
+      "parameters": [
+        {
+          "name": "disable",
+          "type": "boolean",
+          "optional": true,
+          "default": "true",
+          "description": "Set True to hide/disable Save button, False to restore."
+        }
+      ]
+    },
+    {
+      "name": "enable_save",
+      "module": "frm",
+      "signature": "frm.enable_save()",
+      "returnType": "void",
+      "docstring": "Re-enables standard Save button in form toolbar.",
+      "example": "frm.enable_save();",
+      "returnDescription": "None (Re-enables form Save button)."
+    }
+  ],
+  "grid": [
+    {
+      "name": "add_new_row",
+      "module": "grid",
+      "signature": "grid.add_new_row(idx?: number, callback?: () => void): any",
+      "returnType": "object",
+      "returnDescription": "The newly added child row object.",
+      "docstring": "Adds a blank new row into the child table grid.",
+      "example": "const new_row = frm.fields_dict['items'].grid.add_new_row();",
+      "parameters": [
+        {
+          "name": "idx",
+          "type": "number",
+          "structure": "0",
+          "optional": true,
+          "description": "Row index insertion position (defaults to bottom)."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback executed after row is appended to grid."
+        }
+      ]
+    },
+    {
+      "name": "get_selected",
+      "module": "grid",
+      "signature": "grid.get_selected() -> string[]",
+      "returnType": "string[]",
+      "returnDescription": "Array of selected row docnames (cdn values).",
+      "docstring": "Returns the names of all checked / selected rows in the child table grid.",
+      "example": "const selected_rows = frm.fields_dict['items'].grid.get_selected();",
+      "parameters": []
+    },
+    {
+      "name": "grid_rows",
+      "module": "grid",
+      "signature": "grid.grid_rows: GridRow[]",
+      "returnType": "GridRow[]",
+      "returnDescription": "Array of GridRow instances.",
+      "docstring": "Array of all visible GridRow instances in the child table.",
+      "example": "frm.fields_dict['items'].grid.grid_rows.forEach(row => console.log(row.doc));",
+      "parameters": []
+    },
+    {
+      "name": "refresh",
+      "module": "grid",
+      "signature": "grid.refresh()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Re-renders the child table grid rows and totals on screen.",
+      "example": "frm.fields_dict['items'].grid.refresh();",
+      "parameters": []
+    }
+  ],
+  "listview": [
+    {
+      "name": "refresh",
+      "module": "listview",
+      "signature": "listview.refresh()",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Re-queries the database and refreshes the ListView table rows.",
+      "example": "listview.refresh();",
+      "parameters": []
+    },
+    {
+      "name": "get_checked_items",
+      "module": "listview",
+      "signature": "listview.get_checked_items() -> object[]",
+      "returnType": "object[]",
+      "returnDescription": "Array of checked row objects with docname and fields.",
+      "docstring": "Returns all checked / selected document rows in the ListView.",
+      "example": "const selected = listview.get_checked_items();",
+      "parameters": []
+    }
+  ],
+  "page": [
+    {
+      "name": "set_title",
+      "module": "frappe.ui.Page",
+      "signature": "page.set_title(title: string)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Sets header title text on custom workspace Page.",
+      "example": "page.set_title(__(\"Payroll Analytics\"));",
+      "parameters": [
+        {
+          "name": "title",
+          "type": "string",
+          "optional": false,
+          "description": "Display title."
+        }
+      ]
+    },
+    {
+      "name": "set_indicator",
+      "module": "frappe.ui.Page",
+      "signature": "page.set_indicator(label: string, color: string)",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Displays colored status badge in page navigation bar.",
+      "example": "page.set_indicator(__(\"Active\"), \"green\");",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "optional": false,
+          "description": "Badge label text."
+        },
+        {
+          "name": "color",
+          "type": "string",
+          "structure": "\"green\" | \"blue\" | \"orange\" | \"red\"",
+          "optional": false,
+          "description": "Badge color."
+        }
+      ]
+    },
+    {
+      "name": "add_inner_button",
+      "module": "frappe.ui.Page",
+      "signature": "page.add_inner_button(label: string, action: () => void, group?: string): any",
+      "returnType": "jQuery",
+      "returnDescription": "jQuery button element.",
+      "docstring": "Adds sub-action button inside page toolbar or dropdown group.",
+      "example": "page.add_inner_button(__(\"Sync Data\"), () => sync(), __(\"Actions\"));",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Export Data\"",
+          "optional": false,
+          "description": "Button label text."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "structure": "() => { /* handler */ }",
+          "optional": false,
+          "description": "Click event callback handler."
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "structure": "\"Actions\"",
+          "optional": true,
+          "description": "Inner button group dropdown heading."
+        }
+      ]
+    },
+    {
+      "name": "add_field",
+      "module": "frappe.ui.Page",
+      "signature": "page.add_field(df: object) -> object",
+      "returnType": "object",
+      "returnDescription": "Control field instance.",
+      "docstring": "Adds dynamic filter input control into page header toolbar.",
+      "example": "const dateField = page.add_field({ fieldtype: \"Date\", label: \"From Date\", fieldname: \"from_date\" });",
+      "parameters": [
+        {
+          "name": "df",
+          "type": "object",
+          "structure": "{\n  fieldtype: \"Select\",\n  fieldname: \"status\",\n  options: [\"Open\", \"Closed\"]\n}",
+          "optional": false,
+          "description": "DocField definition dictionary."
+        }
+      ]
+    },
+    {
+      "name": "set_primary_action",
+      "module": "frappe.ui.Page",
+      "signature": "page.set_primary_action(label: string, action: () => void, icon?: string): any",
+      "returnType": "jQuery",
+      "returnDescription": "jQuery primary button element.",
+      "docstring": "Configures standard bold primary action button in top right of page.",
+      "example": "page.set_primary_action(__(\"Create Slip\"), () => create(), \"octicon octicon-plus\");",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"New Order\"",
+          "optional": false,
+          "description": "Button label."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "structure": "() => { /* action */ }",
+          "optional": false,
+          "description": "Primary action handler."
+        },
+        {
+          "name": "icon",
+          "type": "string",
+          "structure": "\"fa fa-plus\"",
+          "optional": true,
+          "description": "FontAwesome icon class name."
+        }
+      ]
+    }
+  ]
+}

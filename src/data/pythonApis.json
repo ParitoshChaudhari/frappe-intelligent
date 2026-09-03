@@ -1,0 +1,2397 @@
+{
+  "frappe": [
+    {
+      "name": "get_doc",
+      "module": "frappe",
+      "signature": "frappe.get_doc(doctype: str | dict, name: str = None) -> Document",
+      "returnType": "Document (frappe.model.document.Document)",
+      "returnDescription": "A complete Document controller instance containing all fields, child table records, and built-in methods.",
+      "docstring": "Loads a full document from the database into memory. Use this when you want to read, edit, or execute business logic methods on a record.",
+      "example": "# 1. Load an existing document by its ID/Name:\nemployee = frappe.get_doc(\"Employee\", \"EMP-001\")\nprint(employee.employee_name, employee.department)\n\n# 2. Create a new document in memory from a dictionary:\nnew_todo = frappe.get_doc({\n    \"doctype\": \"ToDo\",\n    \"description\": \"Review payroll report\",\n    \"priority\": \"High\"\n})\nnew_todo.insert()",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str | dict",
+          "structure": "str | { \"doctype\": str, ... }",
+          "optional": false,
+          "description": "The DocType name as a string (e.g. 'Employee', 'Sales Invoice') OR a dictionary with document fields to initialize a new record."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"EMP-001\"",
+          "optional": true,
+          "description": "The unique ID / Name of the document you want to load (e.g. 'EMP-001', 'ACC-SINV-2026-001'). Leave empty if passing a dictionary in the first argument."
+        }
+      ]
+    },
+    {
+      "name": "get_cached_doc",
+      "module": "frappe",
+      "signature": "frappe.get_cached_doc(doctype: str, name: str = None) -> Document",
+      "returnType": "Document",
+      "returnDescription": "Cached Document instance (fast memory lookup).",
+      "docstring": "Loads a document from Redis memory cache if available, or fetches from the database. Use for read-only lookups on master data and settings DocTypes for maximum performance.",
+      "example": "company = frappe.get_cached_doc(\"Company\", \"My Company\")\ncurrency = company.default_currency",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Company\"",
+          "optional": false,
+          "description": "Name of the DocType to fetch from memory cache."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"My Company\"",
+          "optional": true,
+          "description": "Document ID or name. For Single DocTypes (like 'System Settings'), you can omit this."
+        }
+      ]
+    },
+    {
+      "name": "get_all",
+      "module": "frappe",
+      "signature": "frappe.get_all(doctype: str, filters: dict | list = None, fields: list[str] = None, order_by: str = None, limit_page_length: int = None) -> list[dict]",
+      "returnType": "list[dict]",
+      "returnDescription": "List of dictionaries matching your query filter. Each dictionary contains the requested fields.",
+      "docstring": "Fetches a list of records from the database without checking user permissions (faster than get_list). Ideal for backend scripts, APIs, and background jobs.",
+      "example": "employees = frappe.get_all(\n    \"Employee\",\n    filters={\"status\": \"Active\", \"department\": \"Sales\"},\n    fields=[\"name\", \"employee_name\", \"cell_number\"],\n    order_by=\"employee_name asc\",\n    limit_page_length=50\n)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "The DocType name to query."
+        },
+        {
+          "name": "filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Active\"} OR [[\"status\", \"=\", \"Active\"]]",
+          "optional": true,
+          "description": "Filtering conditions as key-value pairs or list of filter triplets."
+        },
+        {
+          "name": "fields",
+          "type": "list[str]",
+          "structure": "[\"name\", \"employee_name\", \"department\"]",
+          "optional": true,
+          "default": "[\"name\"]",
+          "description": "List of field names to retrieve."
+        },
+        {
+          "name": "order_by",
+          "type": "str",
+          "structure": "\"creation desc\"",
+          "optional": true,
+          "description": "Sorting column and direction."
+        },
+        {
+          "name": "limit_page_length",
+          "type": "int",
+          "optional": true,
+          "default": "20",
+          "description": "Maximum number of records to return."
+        }
+      ]
+    },
+    {
+      "name": "get_list",
+      "module": "frappe",
+      "signature": "frappe.get_list(doctype: str, filters: dict = None, fields: list[str] = None, order_by: str = None, limit_page_length: int = 20) -> list[Document]",
+      "returnType": "list[dict]",
+      "returnDescription": "List of record dictionaries filtered by the active user's permissions.",
+      "docstring": "Fetches a list of records while strictly enforcing the current user's role and permission rules. Use this for user-facing lists and portal views.",
+      "example": "todos = frappe.get_list(\"ToDo\", filters={\"status\": \"Open\"}, fields=[\"name\", \"description\"])",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "Target DocType name to query."
+        },
+        {
+          "name": "filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Active\"}",
+          "optional": true,
+          "description": "Filter conditions dictionary or list of filter arrays."
+        },
+        {
+          "name": "fields",
+          "type": "list[str]",
+          "structure": "[\"name\", \"employee_name\"]",
+          "optional": true,
+          "description": "List of fieldnames to fetch (defaults to [\"name\"])."
+        },
+        {
+          "name": "order_by",
+          "type": "str",
+          "structure": "\"creation desc\"",
+          "optional": true,
+          "description": "Sorting column order string."
+        },
+        {
+          "name": "limit_page_length",
+          "type": "int",
+          "structure": "50",
+          "optional": true,
+          "default": "20",
+          "description": "Number of records to retrieve per page."
+        }
+      ]
+    },
+    {
+      "name": "new_doc",
+      "module": "frappe",
+      "signature": "frappe.new_doc(doctype: str) -> Document",
+      "returnType": "Document",
+      "returnDescription": "Fresh, un-saved Document instance populated with default values.",
+      "docstring": "Initializes a brand-new Document in memory with default values populated from the DocType schema.",
+      "example": "doc = frappe.new_doc(\"Customer\")\ndoc.customer_name = \"Acme Corp\"\ndoc.insert()",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "Name of the DocType to create."
+        }
+      ]
+    },
+    {
+      "name": "msgprint",
+      "module": "frappe",
+      "signature": "frappe.msgprint(msg: str, title: str = None, indicator: str = None, alert: bool = False)",
+      "returnType": "None",
+      "returnDescription": "None (Displays message modal/toast in Frappe Desk).",
+      "docstring": "Displays a popup message dialog or notification toast to the user in the desk interface.",
+      "example": "frappe.msgprint(\"Salary slip generated!\", title=\"Success\", indicator=\"green\")",
+      "parameters": [
+        {
+          "name": "msg",
+          "type": "str | list | dict",
+          "structure": "\"Employee created successfully\"",
+          "optional": false,
+          "description": "Message content or data structure to display."
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "structure": "\"Notification\"",
+          "optional": true,
+          "description": "Modal popup title heading."
+        },
+        {
+          "name": "indicator",
+          "type": "str",
+          "structure": "\"green\" | \"orange\" | \"red\" | \"blue\"",
+          "optional": true,
+          "description": "Color status indicator badge."
+        },
+        {
+          "name": "alert",
+          "type": "bool",
+          "optional": true,
+          "description": "If True, displays as floating toast message instead of modal."
+        }
+      ]
+    },
+    {
+      "name": "throw",
+      "module": "frappe",
+      "signature": "frappe.throw(msg: str, exc: type[Exception] = frappe.ValidationError, title: str = None) -> None",
+      "returnType": "None",
+      "returnDescription": "Never returns (Raises ValidationError exception interrupting transaction).",
+      "docstring": "Halts execution immediately, rolls back the current database transaction, and shows a red error dialog to the user.",
+      "example": "if not self.department:\n    frappe.throw(\"Please select a Department before saving.\", title=\"Missing Field\")",
+      "parameters": [
+        {
+          "name": "msg",
+          "type": "str",
+          "structure": "_(\"Mandatory field missing\")",
+          "optional": false,
+          "description": "Error message displayed to user."
+        },
+        {
+          "name": "exc",
+          "type": "type[Exception]",
+          "optional": true,
+          "default": "frappe.ValidationError",
+          "description": "Exception class to raise (e.g. frappe.PermissionError, frappe.DoesNotExistError)."
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "structure": "\"Validation Error\"",
+          "optional": true,
+          "description": "Error modal heading title."
+        }
+      ]
+    },
+    {
+      "name": "enqueue",
+      "module": "frappe",
+      "signature": "frappe.enqueue(method: str | callable, queue: str = 'default', timeout: int = 300, is_async: bool = True, now: bool = False, enqueue_after_commit: bool = False, **kwargs) -> str",
+      "returnType": "Job",
+      "returnDescription": "Background RQ job object.",
+      "docstring": "Runs a time-consuming Python function asynchronously in the background worker queue (Redis Queue) so it does not freeze the user interface.",
+      "example": "frappe.enqueue(\"my_app.tasks.generate_bulk_reports\", queue=\"long\", timeout=600, company=\"My Company\")",
+      "parameters": [
+        {
+          "name": "method",
+          "type": "str | callable",
+          "structure": "\"app.module.method_name\"",
+          "optional": false,
+          "description": "Python dot-path string or callable function to execute in background worker."
+        },
+        {
+          "name": "queue",
+          "type": "str",
+          "structure": "\"default\" | \"short\" | \"long\"",
+          "optional": true,
+          "default": "default",
+          "description": "Redis worker queue priority tier."
+        },
+        {
+          "name": "timeout",
+          "type": "int",
+          "structure": "300",
+          "optional": true,
+          "default": "300",
+          "description": "Maximum execution timeout in seconds before task fails."
+        },
+        {
+          "name": "is_async",
+          "type": "bool",
+          "optional": true,
+          "default": "True",
+          "description": "Execute asynchronously via background worker (set False for synchronous testing)."
+        },
+        {
+          "name": "now",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Execute immediately in current thread instead of queuing."
+        },
+        {
+          "name": "enqueue_after_commit",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Only push to Redis queue if current database transaction commits successfully."
+        },
+        {
+          "name": "kwargs",
+          "type": "dict",
+          "structure": "param1=val1, param2=val2",
+          "optional": true,
+          "description": "Keyword arguments passed directly to the target method."
+        }
+      ]
+    },
+    {
+      "name": "sendmail",
+      "module": "frappe",
+      "signature": "frappe.sendmail(recipients: list[str] | str, sender: str = None, subject: str = None, message: str = None, as_markdown: bool = False, template: str = None, args: dict = None, delayed: bool = False, reference_doctype: str = None, reference_name: str = None, attachments: list[dict] = None) -> None",
+      "returnType": "None",
+      "returnDescription": "None (Queues or sends email message).",
+      "docstring": "Queues and sends an email via the system Email Account. Links the email to a document timeline if reference_doctype is provided.",
+      "example": "frappe.sendmail(recipients=[\"user@example.com\"], subject=\"Invoice Ready\", message=\"<p>Your invoice is attached.</p>\")",
+      "parameters": [
+        {
+          "name": "recipients",
+          "type": "list[str] | str",
+          "structure": "[\"user@example.com\"]",
+          "optional": false,
+          "description": "Recipient email addresses list or comma-separated string."
+        },
+        {
+          "name": "sender",
+          "type": "str",
+          "structure": "\"notifications@example.com\"",
+          "optional": true,
+          "description": "Sender email address (defaults to default outgoing email account)."
+        },
+        {
+          "name": "subject",
+          "type": "str",
+          "structure": "\"Invoice #INV-2026-001\"",
+          "optional": false,
+          "description": "Email subject line."
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "structure": "\"<p>Please find attached...</p>\"",
+          "optional": true,
+          "description": "Raw HTML or plain-text email body content."
+        },
+        {
+          "name": "as_markdown",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Convert Markdown syntax in message body to HTML."
+        },
+        {
+          "name": "template",
+          "type": "str",
+          "structure": "\"order_confirmation\"",
+          "optional": true,
+          "description": "Jinja email template filename or DocType template name."
+        },
+        {
+          "name": "args",
+          "type": "dict",
+          "structure": "{\"customer_name\": \"Acme Corp\", \"total\": 500.0}",
+          "optional": true,
+          "description": "Context arguments dictionary supplied to Jinja email template."
+        },
+        {
+          "name": "delayed",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Queue email in Email Queue for background sending rather than instant transmission."
+        },
+        {
+          "name": "reference_doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "description": "Reference DocType to link email communication history with."
+        },
+        {
+          "name": "reference_name",
+          "type": "str",
+          "structure": "\"ACC-SINV-2026-0001\"",
+          "optional": true,
+          "description": "Reference document name / ID."
+        },
+        {
+          "name": "attachments",
+          "type": "list[dict]",
+          "structure": "[{\"fname\": \"invoice.pdf\", \"fcontent\": pdf_bytes}]",
+          "optional": true,
+          "description": "List of attachment dictionaries with fname and fcontent."
+        }
+      ]
+    },
+    {
+      "name": "publish_realtime",
+      "module": "frappe",
+      "signature": "frappe.publish_realtime(event: str, message: dict | str = None, room: str = None, user: str = None, doctype: str = None, docname: str = None, after_commit: bool = False) -> None",
+      "returnType": "None",
+      "returnDescription": "None (Transmits WebSocket packet to connected browser clients).",
+      "docstring": "Pushes a real-time WebSocket event message from the server to connected browser clients instantly via SocketIO.",
+      "example": "frappe.publish_realtime(\"task_progress\", {\"progress\": 50}, user=frappe.session.user)",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "str",
+          "structure": "\"task_progress\"",
+          "optional": false,
+          "description": "WebSocket event identifier string."
+        },
+        {
+          "name": "message",
+          "type": "dict | str",
+          "structure": "{\"progress\": 80, \"status\": \"Syncing\"}",
+          "optional": true,
+          "description": "Payload dictionary or string transmitted to client listener."
+        },
+        {
+          "name": "room",
+          "type": "str",
+          "structure": "\"website\"",
+          "optional": true,
+          "description": "Broadcast room target."
+        },
+        {
+          "name": "user",
+          "type": "str",
+          "structure": "frappe.session.user",
+          "optional": true,
+          "description": "Specific recipient user email; if omitted, broadcasts to all connected users or room."
+        },
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": true,
+          "description": "DocType context filter."
+        },
+        {
+          "name": "docname",
+          "type": "str",
+          "structure": "\"SO-0001\"",
+          "optional": true,
+          "description": "Document name context filter."
+        },
+        {
+          "name": "after_commit",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Emit event only after active SQL transaction commits."
+        }
+      ]
+    },
+    {
+      "name": "log_error",
+      "module": "frappe",
+      "signature": "frappe.log_error(title: str = None, message: str = None, reference_doctype: str = None, reference_name: str = None) -> Document",
+      "returnType": "Document (Error Log)",
+      "returnDescription": "The created `Error Log` Document containing the recorded traceback, error title, and optional reference linkage.",
+      "docstring": "Writes a detailed error and traceback to the `Error Log` DocType in the database. Essential for background jobs, webhooks, and asynchronous tasks where errors must be preserved and investigated in Frappe Desk without breaking execution.",
+      "example": "# 1. Log an exception in a try/except block with custom title:\ntry:\n    process_order(order_id)\nexcept Exception as e:\n    frappe.log_error(title=f\"Order Processing Failed: {order_id}\", message=frappe.get_traceback())\n\n# 2. Attach error log to a reference document (Frappe v14+):\nfrappe.log_error(\n    title=\"Payment Gateway Timeout\",\n    message=response.text,\n    reference_doctype=\"Sales Invoice\",\n    reference_name=\"ACC-SINV-2026-0001\"\n)",
+      "parameters": [
+        {
+          "name": "title",
+          "type": "str | Exception",
+          "structure": "\"Payment Gateway Timeout\"",
+          "optional": true,
+          "description": "A short, descriptive heading for the error shown in the Error Log list view."
+        },
+        {
+          "name": "message",
+          "type": "str",
+          "structure": "frappe.get_traceback() | \"Raw payload / trace\"",
+          "optional": true,
+          "description": "The full error message, JSON payload, or Python traceback string (`frappe.get_traceback()`). If omitted inside an except block in v15+, Frappe captures the traceback automatically."
+        },
+        {
+          "name": "reference_doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "description": "DocType associated with the error (enables direct linking from Error Log to the record)."
+        },
+        {
+          "name": "reference_name",
+          "type": "str",
+          "structure": "\"ACC-SINV-2026-0001\"",
+          "optional": true,
+          "description": "Name / ID of the specific document where the error originated."
+        }
+      ]
+    },
+    {
+      "name": "logger",
+      "module": "frappe",
+      "signature": "frappe.logger(module: str = None) -> Logger",
+      "returnType": "Logger",
+      "returnDescription": "Python logging.Logger instance writing to logs/ directory.",
+      "docstring": "Returns a structured logger that writes log entries to log files in the bench logs/ directory.",
+      "example": "log = frappe.logger(\"my_app\")\nlog.info(\"Syncing employees with external HR API...\")",
+      "parameters": [
+        {
+          "name": "module",
+          "type": "str",
+          "structure": "\"my_app\"",
+          "optional": true,
+          "description": "Module / application namespace logger."
+        }
+      ]
+    },
+    {
+      "name": "get_traceback",
+      "module": "frappe",
+      "signature": "frappe.get_traceback() -> str",
+      "returnType": "str",
+      "returnDescription": "Formatted Python stack trace string.",
+      "docstring": "Returns the complete formatted stack trace string for the currently handled exception.",
+      "example": "tb = frappe.get_traceback()",
+      "parameters": []
+    },
+    {
+      "name": "render_template",
+      "module": "frappe",
+      "signature": "frappe.render_template(template: str, context: dict) -> str",
+      "returnType": "str",
+      "returnDescription": "Rendered HTML/text string.",
+      "docstring": "Renders a Jinja template string or file path using the provided context dictionary.",
+      "example": "html = frappe.render_template(\"<p>Hello {{ name }}</p>\", {\"name\": \"Alice\"})",
+      "parameters": [
+        {
+          "name": "template",
+          "type": "str",
+          "structure": "\"<p>{{ name }}</p>\" OR \"my_app/templates/email.html\"",
+          "optional": false,
+          "description": "Jinja template string or template file path."
+        },
+        {
+          "name": "context",
+          "type": "dict",
+          "structure": "{\"name\": \"Alice\"}",
+          "optional": false,
+          "description": "Context variables dictionary."
+        }
+      ]
+    },
+    {
+      "name": "get_print",
+      "module": "frappe",
+      "signature": "frappe.get_print(doctype: str, name: str, print_format: str = None, style: str = None, as_pdf: bool = False) -> str | bytes",
+      "returnType": "str | bytes",
+      "returnDescription": "HTML string or raw PDF bytes (if as_pdf=True).",
+      "docstring": "Generates the rendered HTML or raw PDF binary content of a document print format.",
+      "example": "pdf_bytes = frappe.get_print(\"Sales Invoice\", \"ACC-SINV-001\", as_pdf=True)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"ACC-SINV-2026-0001\"",
+          "optional": false,
+          "description": "Target document name / ID."
+        },
+        {
+          "name": "print_format",
+          "type": "str",
+          "structure": "\"Standard\"",
+          "optional": true,
+          "description": "Print Format template name (defaults to standard format)."
+        },
+        {
+          "name": "style",
+          "type": "str",
+          "structure": "\"Custom CSS string\"",
+          "optional": true,
+          "description": "Optional custom CSS stylesheet styling."
+        },
+        {
+          "name": "as_pdf",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Return binary PDF byte stream instead of raw HTML."
+        }
+      ]
+    },
+    {
+      "name": "as_json",
+      "module": "frappe",
+      "signature": "frappe.as_json(obj: any, indent: int = 1) -> str",
+      "returnType": "str",
+      "returnDescription": "JSON formatted string.",
+      "docstring": "Serializes any Python object, datetime, or Frappe Document safely into a JSON string.",
+      "example": "json_str = frappe.as_json({\"status\": \"Active\", \"date\": frappe.utils.now_datetime()})",
+      "parameters": [
+        {
+          "name": "obj",
+          "type": "any",
+          "structure": "{\"key\": \"val\"}",
+          "optional": false,
+          "description": "Object, dictionary, or list to serialize."
+        },
+        {
+          "name": "indent",
+          "type": "int",
+          "structure": "2",
+          "optional": true,
+          "default": "1",
+          "description": "JSON indentation spacing."
+        }
+      ]
+    },
+    {
+      "name": "parse_json",
+      "module": "frappe",
+      "signature": "frappe.parse_json(val: str | Any) -> Any",
+      "returnType": "Any",
+      "returnDescription": "Parsed Python dictionary, list, or primitive.",
+      "docstring": "Safely parses a JSON string into Python dict/list. If already a dict/list, returns it directly without throwing exceptions.",
+      "example": "data = frappe.parse_json(frappe.form_dict.payload)",
+      "parameters": [
+        {
+          "name": "val",
+          "type": "str",
+          "structure": "\"{\\\"key\\\": \\\"value\\\"}\"",
+          "optional": false,
+          "description": "JSON string to deserialize."
+        }
+      ]
+    },
+    {
+      "name": "safe_eval",
+      "module": "frappe",
+      "signature": "frappe.safe_eval(code: str, eval_globals: dict = None, eval_locals: dict = None) -> any",
+      "returnType": "Any",
+      "returnDescription": "Result of evaluated Python expression.",
+      "docstring": "Safely evaluates a Python code expression within a restricted sandbox environment without arbitrary execution risks.",
+      "example": "result = frappe.safe_eval(\"qty * rate\", None, {\"qty\": 5, \"rate\": 100})",
+      "parameters": [
+        {
+          "name": "code",
+          "type": "str",
+          "structure": "\"doc.rate * doc.qty\"",
+          "optional": false,
+          "description": "Python expression string to safely evaluate with restricted builtins."
+        },
+        {
+          "name": "eval_globals",
+          "type": "dict",
+          "structure": "{\"math\": math}",
+          "optional": true,
+          "description": "Global scope dictionary accessible during evaluation."
+        },
+        {
+          "name": "eval_locals",
+          "type": "dict",
+          "structure": "{\"doc\": doc}",
+          "optional": true,
+          "description": "Local variables dictionary available to expression."
+        }
+      ]
+    },
+    {
+      "name": "generate_hash",
+      "module": "frappe",
+      "signature": "frappe.generate_hash(length: int = 16) -> str",
+      "returnType": "str",
+      "returnDescription": "Random hexadecimal hash string.",
+      "docstring": "Generates a cryptographically secure random hexadecimal string.",
+      "example": "token = frappe.generate_hash(32)",
+      "parameters": [
+        {
+          "name": "length",
+          "type": "int",
+          "optional": true,
+          "default": "16",
+          "description": "Hash character length."
+        }
+      ]
+    },
+    {
+      "name": "xcall",
+      "module": "frappe",
+      "signature": "frappe.xcall(method: str, args: dict = None) -> Any",
+      "returnType": "Any",
+      "returnDescription": "Direct result of executed whitelisted Python method.",
+      "docstring": "Executes a whitelisted server-side Python method and returns the response directly. Raises exceptions on error.",
+      "example": "result = frappe.xcall('hrms.payroll.doctype.salary_slip.salary_slip.get_salary_structure', {'employee': 'EMP-001'})",
+      "parameters": [
+        {
+          "name": "method",
+          "type": "str",
+          "structure": "\"app.module.doctype.method\"",
+          "optional": false,
+          "description": "Dotted Python path to whitelisted method."
+        },
+        {
+          "name": "args",
+          "type": "dict",
+          "structure": "{\"key\": value}",
+          "optional": true,
+          "description": "Arguments dictionary passed to method."
+        }
+      ]
+    },
+    {
+      "name": "get_last_doc",
+      "module": "frappe",
+      "signature": "frappe.get_last_doc(doctype: str, filters: dict = None, order_by: str = 'creation desc') -> Document",
+      "returnType": "Document",
+      "returnDescription": "The latest Document instance matching criteria.",
+      "docstring": "Fetches the most recently created or updated Document matching given filters.",
+      "example": "last_invoice = frappe.get_last_doc('Sales Invoice', filters={'customer': 'Customer A'})",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "filters",
+          "type": "dict",
+          "structure": "{\"status\": \"Submitted\"}",
+          "optional": true,
+          "description": "Filter criteria dictionary."
+        },
+        {
+          "name": "order_by",
+          "type": "str",
+          "structure": "\"creation desc\"",
+          "optional": true,
+          "default": "creation desc",
+          "description": "Ordering column sequence."
+        }
+      ]
+    },
+    {
+      "name": "get_single",
+      "module": "frappe",
+      "signature": "frappe.get_single(doctype: str) -> Document",
+      "returnType": "Document",
+      "returnDescription": "Single DocType Document instance.",
+      "docstring": "Fetches single document instance from database without needing a document name (e.g. System Settings).",
+      "example": "system_settings = frappe.get_single('System Settings')",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"System Settings\"",
+          "optional": false,
+          "description": "Single DocType name"
+        }
+      ]
+    },
+    {
+      "name": "publish_progress",
+      "module": "frappe",
+      "signature": "frappe.publish_progress(percent: float, title: str = None, description: str = None, user: str = None) -> None",
+      "returnType": "None",
+      "docstring": "Publishes live real-time progress bar to user interface via websockets during long-running background tasks.",
+      "example": "for i in range(100):\n    # process\n    frappe.publish_progress(float(i + 1), title='Syncing Records', description=f'Item {i+1} of 100')",
+      "parameters": [
+        {
+          "name": "percent",
+          "type": "float",
+          "structure": "75.0",
+          "optional": false,
+          "description": "Progress percentage (0.0 to 100.0)."
+        },
+        {
+          "name": "title",
+          "type": "str",
+          "structure": "\"Importing Data\"",
+          "optional": true,
+          "description": "Title header of modal dialog."
+        },
+        {
+          "name": "description",
+          "type": "str",
+          "structure": "\"Processing row 75 of 100...\"",
+          "optional": true,
+          "description": "Detailed step description."
+        },
+        {
+          "name": "user",
+          "type": "str",
+          "structure": "frappe.session.user",
+          "optional": true,
+          "description": "Target user email to receive progress update."
+        }
+      ],
+      "returnDescription": "None (Broadcasts progress update via WebSocket)."
+    },
+    {
+      "name": "clear_messages",
+      "module": "frappe",
+      "signature": "frappe.clear_messages()",
+      "returnType": "None",
+      "docstring": "Clears any pending user messages or alerts in the current request queue.",
+      "example": "frappe.clear_messages()",
+      "returnDescription": "None (Empties pending message buffer)."
+    },
+    {
+      "name": "get_system_settings",
+      "module": "frappe",
+      "signature": "frappe.get_system_settings(key: str) -> Any",
+      "returnType": "Any",
+      "docstring": "Fetches setting value from System Settings document.",
+      "example": "date_format = frappe.get_system_settings('date_format')",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"date_format\"",
+          "optional": false,
+          "description": "Setting field name"
+        }
+      ],
+      "returnDescription": "Setting value stored in System Settings."
+    },
+    {
+      "name": "respond_as_web_page",
+      "module": "frappe",
+      "signature": "frappe.respond_as_web_page(title: str, html: str, success: bool = None, http_status_code: int = None) -> None",
+      "returnType": "None",
+      "docstring": "Renders custom HTML response as full website page for web requests.",
+      "example": "frappe.respond_as_web_page('Thank you', '<p>Your payment was successful</p>', success=True)",
+      "parameters": [
+        {
+          "name": "title",
+          "type": "str",
+          "structure": "\"Verification Completed\"",
+          "optional": false,
+          "description": "HTML page header title."
+        },
+        {
+          "name": "html",
+          "type": "str",
+          "structure": "\"<p>Your account is verified.</p>\"",
+          "optional": false,
+          "description": "HTML body content."
+        },
+        {
+          "name": "success",
+          "type": "bool",
+          "optional": true,
+          "description": "Indicator badge style (green for True, red for False)."
+        },
+        {
+          "name": "http_status_code",
+          "type": "int",
+          "structure": "200",
+          "optional": true,
+          "default": "200",
+          "description": "HTTP response status code."
+        }
+      ],
+      "returnDescription": "None (Sets HTTP response to rendered web page)."
+    }
+  ],
+  "frappe.session": [
+    {
+      "name": "user",
+      "module": "frappe.session",
+      "signature": "frappe.session.user: str",
+      "returnType": "str",
+      "returnDescription": "Current logged-in user email/ID (e.g. 'Administrator', 'user@example.com', 'Guest').",
+      "docstring": "The email ID of the currently logged-in user making the request.",
+      "example": "if frappe.session.user == \"Administrator\":\n    print(\"Superuser session\")",
+      "parameters": []
+    },
+    {
+      "name": "data",
+      "module": "frappe.session",
+      "signature": "frappe.session.data: dict",
+      "returnType": "dict",
+      "returnDescription": "Session data dictionary.",
+      "docstring": "Dictionary holding session variables stored in Redis.",
+      "example": "user_lang = frappe.session.data.get(\"lang\", \"en\")",
+      "parameters": []
+    },
+    {
+      "name": "csrf_token",
+      "module": "frappe.session",
+      "signature": "frappe.session.csrf_token: str",
+      "returnType": "str",
+      "returnDescription": "Active session CSRF token string.",
+      "docstring": "CSRF protection token associated with the current user session.",
+      "example": "token = frappe.session.csrf_token",
+      "parameters": []
+    }
+  ],
+  "frappe.local": [
+    {
+      "name": "site",
+      "module": "frappe.local",
+      "signature": "frappe.local.site: str",
+      "returnType": "str",
+      "returnDescription": "Current site directory name (e.g. 'site1.localhost', 'erp.example.com').",
+      "docstring": "Thread-local site name for the active request.",
+      "example": "print(f\"Processing request on site: {frappe.local.site}\")",
+      "parameters": []
+    },
+    {
+      "name": "request",
+      "module": "frappe.local",
+      "signature": "frappe.local.request: Request",
+      "returnType": "Request (Werkzeug Request)",
+      "returnDescription": "Underlying WSGI HTTP request object.",
+      "docstring": "Werkzeug HTTP request object containing headers, cookies, IP address, and raw payload.",
+      "example": "client_ip = frappe.local.request.remote_addr",
+      "parameters": []
+    },
+    {
+      "name": "response",
+      "module": "frappe.local",
+      "signature": "frappe.local.response: dict",
+      "returnType": "dict",
+      "returnDescription": "Outgoing HTTP response dictionary.",
+      "docstring": "Dictionary used by Frappe to build the JSON response returned to the client.",
+      "example": "frappe.local.response[\"type\"] = \"binary\"\nfrappe.local.response[\"filename\"] = \"report.pdf\"",
+      "parameters": []
+    },
+    {
+      "name": "conf",
+      "module": "frappe.local",
+      "signature": "frappe.local.conf: dict",
+      "returnType": "dict",
+      "returnDescription": "Active site configuration dictionary.",
+      "docstring": "Configuration settings loaded from the current site's `site_config.json`.",
+      "example": "db_name = frappe.local.conf.db_name",
+      "parameters": []
+    }
+  ],
+  "frappe.flags": [
+    {
+      "name": "in_test",
+      "module": "frappe.flags",
+      "signature": "frappe.flags.in_test: bool",
+      "returnType": "bool",
+      "returnDescription": "True if running under automated unit test suite.",
+      "docstring": "Flag indicating whether code is currently running inside automated test execution.",
+      "example": "if not frappe.flags.in_test:\n    trigger_external_webhook()",
+      "parameters": []
+    },
+    {
+      "name": "in_migrate",
+      "module": "frappe.flags",
+      "signature": "frappe.flags.in_migrate: bool",
+      "returnType": "bool",
+      "returnDescription": "True if bench migrate is running.",
+      "docstring": "Flag indicating that database migrations and patches are currently executing.",
+      "example": "if frappe.flags.in_migrate:\n    return",
+      "parameters": []
+    },
+    {
+      "name": "read_only",
+      "module": "frappe.flags",
+      "signature": "frappe.flags.read_only: bool",
+      "returnType": "bool",
+      "returnDescription": "True if site is in maintenance read-only mode.",
+      "docstring": "Flag indicating that the site is running in read-only mode.",
+      "example": "if frappe.flags.read_only:\n    frappe.throw(\"Site is under maintenance.\")",
+      "parameters": []
+    }
+  ],
+  "frappe.db": [
+    {
+      "name": "get_value",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_value(doctype: str, filters: str | dict | list, fieldname: str | list[str] = 'name', as_dict: bool = False) -> Any | dict | None",
+      "returnType": "Any | dict | None",
+      "returnDescription": "The single field value, a tuple of values, a dictionary (if as_dict=True), or None if no record matches.",
+      "docstring": "Reads specific field values directly from the database table with a fast SQL query without loading the full Document into memory. Highly recommended for quick field lookups.",
+      "example": "status = frappe.db.get_value(\"Employee\", \"EMP-001\", \"status\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "The DocType database table to query."
+        },
+        {
+          "name": "filters",
+          "type": "str | dict | list",
+          "structure": "\"EMP-001\" OR {\"status\": \"Active\"}",
+          "optional": false,
+          "description": "Document ID string OR filter conditions dictionary."
+        },
+        {
+          "name": "fieldname",
+          "type": "str | list[str]",
+          "structure": "\"department\" OR [\"department\", \"salary\"]",
+          "optional": true,
+          "default": "\"name\"",
+          "description": "The field name or list of field names you want to retrieve."
+        },
+        {
+          "name": "as_dict",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Set True to return the result as a dictionary."
+        }
+      ]
+    },
+    {
+      "name": "get_values",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_values(doctype: str, filters: dict | str = None, fieldname: str | list[str] = None, as_dict: bool = False) -> list",
+      "returnType": "list[dict] | list[tuple]",
+      "returnDescription": "List of matched records with the requested fields.",
+      "docstring": "Fetches multiple rows from the database with specific column values without loading full documents.",
+      "example": "active_users = frappe.db.get_values(\"User\", {\"enabled\": 1}, [\"name\", \"full_name\"], as_dict=True)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "filters",
+          "type": "dict | str",
+          "structure": "{\"status\": \"Active\"}",
+          "optional": true,
+          "description": "Filter criteria."
+        },
+        {
+          "name": "fieldname",
+          "type": "str | list[str]",
+          "structure": "[\"name\", \"employee_name\"]",
+          "optional": true,
+          "description": "Fieldname(s) to fetch."
+        },
+        {
+          "name": "as_dict",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Return rows as dictionaries rather than tuples."
+        }
+      ]
+    },
+    {
+      "name": "set_value",
+      "module": "frappe.db",
+      "signature": "frappe.db.set_value(doctype: str, name: str | dict, fieldname: str | dict, value: any = None, update_modified: bool = True) -> None",
+      "returnType": "None",
+      "returnDescription": "None. Updates database record directly.",
+      "docstring": "Directly updates a field or fields in the database table with a fast SQL UPDATE statement without triggering document validation hooks.",
+      "example": "frappe.db.set_value(\"Employee\", \"EMP-001\", \"status\", \"Left\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str | dict",
+          "structure": "\"CUST-0001\" | {\"status\": \"Open\"}",
+          "optional": false,
+          "description": "Target record name ID or filters dictionary."
+        },
+        {
+          "name": "fieldname",
+          "type": "str | dict",
+          "structure": "\"customer_group\" | {\"field1\": \"val1\"}",
+          "optional": false,
+          "description": "Fieldname to update or dictionary of multiple key-value pairs."
+        },
+        {
+          "name": "value",
+          "type": "any",
+          "structure": "\"Commercial\"",
+          "optional": true,
+          "description": "New value to assign (omit if fieldname is a dictionary)."
+        },
+        {
+          "name": "update_modified",
+          "type": "bool",
+          "optional": true,
+          "default": "True",
+          "description": "Update modified timestamp and modified_by user columns."
+        }
+      ]
+    },
+    {
+      "name": "get_single_value",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_single_value(doctype: str, fieldname: str) -> Any",
+      "returnType": "Any",
+      "returnDescription": "Value of field from Single DocType table.",
+      "docstring": "Fetches a field value from a Single DocType (like 'System Settings' or 'HR Settings').",
+      "example": "currency = frappe.db.get_single_value(\"System Settings\", \"currency\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"System Settings\"",
+          "optional": false,
+          "description": "Single DocType name."
+        },
+        {
+          "name": "fieldname",
+          "type": "str",
+          "structure": "\"currency\"",
+          "optional": false,
+          "description": "Field name to read."
+        }
+      ]
+    },
+    {
+      "name": "set_single_value",
+      "module": "frappe.db",
+      "signature": "frappe.db.set_single_value(doctype: str, fieldname: str, value: Any)",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Updates a field value in a Single DocType.",
+      "example": "frappe.db.set_single_value(\"System Settings\", \"currency\", \"USD\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"System Settings\"",
+          "optional": false,
+          "description": "Single DocType name."
+        },
+        {
+          "name": "fieldname",
+          "type": "str",
+          "optional": false,
+          "description": "Field name."
+        },
+        {
+          "name": "value",
+          "type": "Any",
+          "optional": false,
+          "description": "New value to write."
+        }
+      ]
+    },
+    {
+      "name": "exists",
+      "module": "frappe.db",
+      "signature": "frappe.db.exists(doctype: str | dict, name: str | dict = None) -> str | None",
+      "returnType": "str | None",
+      "returnDescription": "Returns the document name/ID if the record exists, or None if it does not exist.",
+      "docstring": "Checks whether a record exists in the database table. Very fast boolean check.",
+      "example": "if frappe.db.exists(\"Customer\", \"Acme Corp\"):\n    print(\"Customer already exists!\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str | dict",
+          "structure": "\"Acme Corp\" OR {\"cell_number\": \"+1234567890\"}",
+          "optional": true,
+          "description": "Record ID name string OR filter dictionary."
+        }
+      ]
+    },
+    {
+      "name": "count",
+      "module": "frappe.db",
+      "signature": "frappe.db.count(doctype: str, filters: dict | list = None) -> int",
+      "returnType": "int",
+      "returnDescription": "Total number of matching records in database.",
+      "docstring": "Executes a fast `SELECT COUNT(*)` query in the database.",
+      "example": "total_active = frappe.db.count(\"Employee\", {\"status\": \"Active\"})",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Active\"}",
+          "optional": true,
+          "description": "Filter criteria dictionary."
+        }
+      ]
+    },
+    {
+      "name": "truncate",
+      "module": "frappe.db",
+      "signature": "frappe.db.truncate(doctype: str)",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Empties and truncates an entire DocType database table.",
+      "example": "frappe.db.truncate(\"Activity Log\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Activity Log\"",
+          "optional": false,
+          "description": "Target DocType name."
+        }
+      ]
+    },
+    {
+      "name": "delete",
+      "module": "frappe.db",
+      "signature": "frappe.db.delete(doctype: str, filters: str | dict = None)",
+      "returnType": "int",
+      "returnDescription": "Number of rows deleted.",
+      "docstring": "Deletes records directly from the database table with an SQL DELETE query.",
+      "example": "frappe.db.delete(\"Error Log\", {\"creation\": [\"<\", \"2026-01-01\"]})",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Error Log\"",
+          "optional": false,
+          "description": "DocType table name."
+        },
+        {
+          "name": "filters",
+          "type": "str | dict",
+          "structure": "{\"seen\": 1}",
+          "optional": true,
+          "description": "Document ID or filter condition dictionary."
+        }
+      ]
+    },
+    {
+      "name": "commit",
+      "module": "frappe.db",
+      "signature": "frappe.db.commit()",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Explicitly commits the current database transaction. Note: Frappe commits automatically at the end of each web request.",
+      "example": "frappe.db.commit()",
+      "parameters": []
+    },
+    {
+      "name": "rollback",
+      "module": "frappe.db",
+      "signature": "frappe.db.rollback()",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Rolls back all uncommitted database changes in the current request.",
+      "example": "frappe.db.rollback()",
+      "parameters": []
+    },
+    {
+      "name": "sql",
+      "module": "frappe.db",
+      "signature": "frappe.db.sql(query: str, values: dict | tuple = None, as_dict: bool = False) -> list[dict] | list[tuple]",
+      "returnType": "list[dict] | list[tuple]",
+      "returnDescription": "List of query result rows as dictionaries or tuples.",
+      "docstring": "Executes a raw SQL query against the database. Always use parameterized %(val)s queries to prevent SQL injection vulnerabilities.",
+      "example": "results = frappe.db.sql(\"\"\"\n    SELECT name, employee_name\n    FROM `tabEmployee`\n    WHERE status = %(status)s\n\"\"\", {\"status\": \"Active\"}, as_dict=True)",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "str",
+          "optional": false,
+          "description": "SQL query string with %(param)s placeholders."
+        },
+        {
+          "name": "values",
+          "type": "dict | tuple",
+          "structure": "{\"status\": \"Active\"}",
+          "optional": true,
+          "description": "Dictionary or tuple of values to safely bind."
+        },
+        {
+          "name": "as_dict",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Set True to return rows as dictionaries."
+        }
+      ]
+    },
+    {
+      "name": "savepoint",
+      "module": "frappe.db",
+      "signature": "frappe.db.savepoint(save_point_name: str)",
+      "returnType": "None",
+      "docstring": "Creates a transactional savepoint in current database transaction allowing partial rollbacks.",
+      "example": "frappe.db.savepoint('before_sync')\ntry:\n    # actions\nexcept Exception:\n    frappe.db.rollback(save_point='before_sync')",
+      "parameters": [
+        {
+          "name": "save_point_name",
+          "type": "str",
+          "structure": "\"my_savepoint\"",
+          "optional": false,
+          "description": "Identifier name for savepoint"
+        }
+      ],
+      "returnDescription": "None (Creates transactional savepoint)."
+    },
+    {
+      "name": "release_savepoint",
+      "module": "frappe.db",
+      "signature": "frappe.db.release_savepoint(save_point_name: str)",
+      "returnType": "None",
+      "docstring": "Releases an active savepoint without rolling back.",
+      "example": "frappe.db.release_savepoint('my_savepoint')",
+      "parameters": [
+        {
+          "name": "save_point_name",
+          "type": "str",
+          "optional": false,
+          "description": "Savepoint name"
+        }
+      ],
+      "returnDescription": "None (Releases active savepoint)."
+    },
+    {
+      "name": "table_exists",
+      "module": "frappe.db",
+      "signature": "frappe.db.table_exists(doctype: str) -> bool",
+      "returnType": "bool",
+      "docstring": "Checks whether database table exists for given DocType.",
+      "example": "if frappe.db.table_exists('Employee'):\n    print('Table is in database')",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "DocType name"
+        }
+      ],
+      "returnDescription": "True if table exists in SQL schema, False otherwise."
+    },
+    {
+      "name": "has_column",
+      "module": "frappe.db",
+      "signature": "frappe.db.has_column(doctype: str, column: str) -> bool",
+      "returnType": "bool",
+      "docstring": "Checks if a column/field exists on database table.",
+      "example": "if frappe.db.has_column('Employee', 'cell_number'):\n    ...",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "DocType name"
+        },
+        {
+          "name": "column",
+          "type": "str",
+          "structure": "\"fieldname\"",
+          "optional": false,
+          "description": "Column fieldname"
+        }
+      ],
+      "returnDescription": "True if column exists on table, False otherwise."
+    },
+    {
+      "name": "get_column_type",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_column_type(doctype: str, column: str) -> str",
+      "returnType": "str",
+      "docstring": "Returns database column type (e.g. varchar, int, decimal).",
+      "example": "col_type = frappe.db.get_column_type('User', 'email')",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "optional": false,
+          "description": "DocType name"
+        },
+        {
+          "name": "column",
+          "type": "str",
+          "optional": false,
+          "description": "Column name"
+        }
+      ],
+      "returnDescription": "SQL column type string (e.g. varchar, int, decimal)."
+    },
+    {
+      "name": "multisql",
+      "module": "frappe.db",
+      "signature": "frappe.db.multisql(query_dict: dict, values: tuple | dict = None) -> list",
+      "returnType": "list",
+      "docstring": "Executes database-specific queries (mariadb vs postgres).",
+      "example": "frappe.db.multisql({'mariadb': 'SELECT NOW()', 'postgres': 'SELECT current_timestamp'})",
+      "parameters": [
+        {
+          "name": "query_dict",
+          "type": "dict",
+          "structure": "{\"mariadb\": \"SELECT ...\", \"postgres\": \"SELECT ...\"}",
+          "optional": false,
+          "description": "Dictionary mapping DB engine ('mariadb', 'postgres') to engine-specific SQL query string."
+        },
+        {
+          "name": "values",
+          "type": "tuple | dict",
+          "structure": "(\"Active\",)",
+          "optional": true,
+          "description": "Parameter values safely parameterized into the query."
+        }
+      ],
+      "returnDescription": "Query result list matching active database engine."
+    },
+    {
+      "name": "add_index",
+      "module": "frappe.db",
+      "signature": "frappe.db.add_index(doctype: str, fields: list[str], index_name: str = None) -> None",
+      "returnType": "None",
+      "docstring": "Creates database index on DocType table columns for query optimization.",
+      "example": "frappe.db.add_index('Sales Invoice', ['customer', 'posting_date'])",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "fields",
+          "type": "list[str]",
+          "structure": "[\"customer\", \"transaction_date\"]",
+          "optional": false,
+          "description": "List of fieldnames to index together."
+        },
+        {
+          "name": "index_name",
+          "type": "str",
+          "structure": "\"idx_so_customer_date\"",
+          "optional": true,
+          "description": "Custom index identifier name in database schema."
+        }
+      ],
+      "returnDescription": "None (Creates database index)."
+    }
+  ],
+  "Document": [
+    {
+      "name": "validate",
+      "module": "Document",
+      "signature": "doc.validate() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Called on every save before changes are written to the database. Use this to perform business validations and throw errors if rules are violated.",
+      "example": "def validate(self):\n    if self.from_date > self.to_date:\n        frappe.throw(\"From Date cannot be after To Date!\")",
+      "parameters": []
+    },
+    {
+      "name": "before_save",
+      "module": "Document",
+      "signature": "doc.before_save() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Executed right after validate(), right before writing updates to the database table.",
+      "example": "def before_save(self):\n    self.total_amount = sum(item.amount for item in self.items)",
+      "parameters": []
+    },
+    {
+      "name": "on_update",
+      "module": "Document",
+      "signature": "doc.on_update() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Triggered immediately after the document has been written and saved in the database.",
+      "example": "def on_update(self):\n    self.notify_parent_project()",
+      "parameters": []
+    },
+    {
+      "name": "before_insert",
+      "module": "Document",
+      "signature": "doc.before_insert() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Runs only once when a brand-new document is first being inserted into the database.",
+      "example": "def before_insert(self):\n    self.initial_status = \"Draft\"",
+      "parameters": []
+    },
+    {
+      "name": "after_insert",
+      "module": "Document",
+      "signature": "doc.after_insert() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Runs immediately after a brand-new document has been created in the database.",
+      "example": "def after_insert(self):\n    frappe.sendmail(recipients=self.owner, subject=\"Welcome!\")",
+      "parameters": []
+    },
+    {
+      "name": "on_submit",
+      "module": "Document",
+      "signature": "doc.on_submit() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Triggered when a submittable document is submitted (docstatus changes from 0 to 1). Use this to create General Ledger entries or post inventory.",
+      "example": "def on_submit(self):\n    self.make_gl_entries()",
+      "parameters": []
+    },
+    {
+      "name": "on_cancel",
+      "module": "Document",
+      "signature": "doc.on_cancel() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Triggered when a submitted document is cancelled (docstatus changes from 1 to 2). Use to reverse GL entries.",
+      "example": "def on_cancel(self):\n    self.reverse_gl_entries()",
+      "parameters": []
+    },
+    {
+      "name": "on_trash",
+      "module": "Document",
+      "signature": "doc.on_trash() -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Lifecycle Hook: Triggered right before a document is permanently deleted from the database.",
+      "example": "def on_trash(self):\n    self.clean_up_attachments()",
+      "parameters": []
+    },
+    {
+      "name": "insert",
+      "module": "Document",
+      "signature": "doc.insert(ignore_permissions: bool = False, ignore_links: bool = False) -> Document",
+      "returnType": "Document",
+      "returnDescription": "The newly inserted Document instance.",
+      "docstring": "Inserts this new document into the database table, runs before_insert / validate hooks, and generates its permanent naming ID.",
+      "example": "doc = frappe.new_doc(\"Customer\")\ndoc.customer_name = \"Acme\"\ndoc.insert()",
+      "parameters": [
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Bypass permission validation check during insert."
+        },
+        {
+          "name": "ignore_links",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Bypass dynamic Link and Foreign Key validation checks."
+        }
+      ]
+    },
+    {
+      "name": "save",
+      "module": "Document",
+      "signature": "doc.save(ignore_permissions: bool = False) -> Document",
+      "returnType": "Document",
+      "returnDescription": "The updated Document instance.",
+      "docstring": "Saves changes made to an existing document, runs validation hooks, and updates the database row.",
+      "example": "doc.department = \"Human Resources\"\ndoc.save()",
+      "parameters": [
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, ignores role permission checks."
+        }
+      ]
+    },
+    {
+      "name": "submit",
+      "module": "Document",
+      "signature": "doc.submit() -> Document",
+      "returnType": "Document",
+      "returnDescription": "Submitted Document instance (docstatus=1).",
+      "docstring": "Submits a submittable document (changes docstatus from 0 to 1) and triggers on_submit hooks.",
+      "example": "doc.submit()",
+      "parameters": []
+    },
+    {
+      "name": "cancel",
+      "module": "Document",
+      "signature": "doc.cancel() -> Document",
+      "returnType": "Document",
+      "returnDescription": "Cancelled Document instance (docstatus=2).",
+      "docstring": "Cancels a submitted document (changes docstatus from 1 to 2) and triggers on_cancel hooks.",
+      "example": "doc.cancel()",
+      "parameters": []
+    },
+    {
+      "name": "append",
+      "module": "Document",
+      "signature": "doc.append(table_fieldname: str, row_values: dict = None) -> Document",
+      "returnType": "Document",
+      "returnDescription": "The newly added child table row document.",
+      "docstring": "Adds a new child table row to a Table field on the document.",
+      "example": "doc.append(\"items\", {\"item_code\": \"LAPTOP-01\", \"qty\": 2, \"rate\": 1200})",
+      "parameters": [
+        {
+          "name": "table_fieldname",
+          "type": "str",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "The fieldname of the child Table on this document."
+        },
+        {
+          "name": "row_values",
+          "type": "dict",
+          "structure": "{\"item_code\": \"LAPTOP-01\", \"qty\": 2, \"rate\": 1200}",
+          "optional": true,
+          "description": "Dictionary of field values for the child row."
+        }
+      ]
+    },
+    {
+      "name": "db_set",
+      "module": "Document",
+      "signature": "doc.db_set(fieldname: str | dict, value: any = None, update_modified: bool = True) -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Directly updates a single field on this document in the database and updates the current in-memory instance without calling full validation hooks.",
+      "example": "self.db_set(\"status\", \"Approved\")",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "str | dict",
+          "structure": "\"status\" | {\"status\": \"Closed\"}",
+          "optional": false,
+          "description": "Fieldname or dictionary of fields to update directly in database."
+        },
+        {
+          "name": "value",
+          "type": "any",
+          "structure": "\"Approved\"",
+          "optional": true,
+          "description": "New value to write (omit if fieldname is a dict)."
+        },
+        {
+          "name": "update_modified",
+          "type": "bool",
+          "optional": true,
+          "default": "True",
+          "description": "Update modified timestamp on record."
+        }
+      ]
+    },
+    {
+      "name": "as_dict",
+      "module": "Document",
+      "signature": "doc.as_dict() -> dict",
+      "returnType": "dict",
+      "returnDescription": "A pure Python dictionary containing all document fields and child tables.",
+      "docstring": "Converts this document and all its child tables into a standard Python dictionary.",
+      "example": "data = doc.as_dict()",
+      "parameters": []
+    },
+    {
+      "name": "is_new",
+      "module": "Document",
+      "signature": "doc.is_new() -> bool",
+      "returnType": "bool",
+      "returnDescription": "True if document is newly created and not yet committed in database.",
+      "docstring": "Checks whether the document is a brand new unsaved record.",
+      "example": "if self.is_new():\n    self.send_welcome_notification()",
+      "parameters": []
+    },
+    {
+      "name": "get_url",
+      "module": "Document",
+      "signature": "doc.get_url() -> str",
+      "returnType": "str",
+      "returnDescription": "Direct desk URL string to open the document.",
+      "docstring": "Returns the complete browser URL path pointing to this document in desk.",
+      "example": "url = doc.get_url()",
+      "parameters": []
+    },
+    {
+      "name": "add_comment",
+      "module": "Document",
+      "signature": "doc.add_comment(comment_type: str = 'Comment', text: str = None) -> Document",
+      "returnType": "Document",
+      "docstring": "Adds timeline comment to document.",
+      "example": "doc.add_comment('Comment', text='Approved by department head')",
+      "parameters": [
+        {
+          "name": "comment_type",
+          "type": "str",
+          "structure": "\"Comment\" | \"Workflow\" | \"Label\"",
+          "optional": true,
+          "default": "Comment",
+          "description": "Classification type of comment."
+        },
+        {
+          "name": "text",
+          "type": "str",
+          "structure": "\"Order approved by finance team.\"",
+          "optional": false,
+          "description": "Comment body text."
+        }
+      ],
+      "returnDescription": "Created Comment Document."
+    },
+    {
+      "name": "add_tag",
+      "module": "Document",
+      "signature": "doc.add_tag(tag: str)",
+      "returnType": "None",
+      "docstring": "Attaches a tag to document.",
+      "example": "doc.add_tag('VIP')",
+      "parameters": [
+        {
+          "name": "tag",
+          "type": "str",
+          "optional": false,
+          "description": "Tag name"
+        }
+      ],
+      "returnDescription": "None (Attaches tag to record)."
+    },
+    {
+      "name": "run_method",
+      "module": "Document",
+      "signature": "doc.run_method(method: str, *args, **kwargs) -> any",
+      "returnType": "Any",
+      "docstring": "Executes controller method with lifecycle hooks.",
+      "example": "doc.run_method('calculate_totals')",
+      "parameters": [
+        {
+          "name": "method",
+          "type": "str",
+          "structure": "\"recalculate_totals\"",
+          "optional": false,
+          "description": "Controller method name to execute on this document."
+        },
+        {
+          "name": "args",
+          "type": "tuple",
+          "optional": true,
+          "description": "Positional arguments passed to method."
+        },
+        {
+          "name": "kwargs",
+          "type": "dict",
+          "optional": true,
+          "description": "Keyword arguments passed to method."
+        }
+      ],
+      "returnDescription": "Return value of the executed controller method."
+    },
+    {
+      "name": "queue_action",
+      "module": "Document",
+      "signature": "doc.queue_action(action: str, **kwargs) -> str",
+      "returnType": "None",
+      "docstring": "Queues submit/cancel/update document action in background worker.",
+      "example": "doc.queue_action('submit')",
+      "parameters": [
+        {
+          "name": "action",
+          "type": "str",
+          "structure": "\"submit\" | \"cancel\"",
+          "optional": false,
+          "description": "Document action to execute in background worker queue."
+        },
+        {
+          "name": "kwargs",
+          "type": "dict",
+          "optional": true,
+          "description": "Additional parameters for background job execution."
+        }
+      ],
+      "returnDescription": "Background job ID queued in Redis."
+    },
+    {
+      "name": "has_value_changed",
+      "module": "Document",
+      "signature": "doc.has_value_changed(fieldname: str) -> bool",
+      "returnType": "bool",
+      "docstring": "Returns True if field value was modified in current transaction compared to database state.",
+      "example": "if self.has_value_changed('status'):\n    self.notify_status_change()",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "str",
+          "structure": "\"status\"",
+          "optional": false,
+          "description": "Fieldname to check"
+        }
+      ],
+      "returnDescription": "True if field value changed in memory vs database."
+    }
+  ],
+  "frappe.utils": [
+    {
+      "name": "today",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.today() -> str",
+      "returnType": "str",
+      "returnDescription": "Current date formatted as 'YYYY-MM-DD' string.",
+      "docstring": "Returns today's date in 'YYYY-MM-DD' format according to current system timezone.",
+      "example": "current_date = frappe.utils.today()",
+      "parameters": []
+    },
+    {
+      "name": "nowdate",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.nowdate() -> str",
+      "returnType": "str",
+      "returnDescription": "Current date string in 'YYYY-MM-DD' format.",
+      "docstring": "Returns today's date as a string formatted as 'YYYY-MM-DD'.",
+      "example": "posting_date = frappe.utils.nowdate()",
+      "parameters": []
+    },
+    {
+      "name": "now_datetime",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.now_datetime() -> datetime",
+      "returnType": "datetime",
+      "returnDescription": "Current datetime object with timezone.",
+      "docstring": "Returns the current system timestamp as a Python datetime object.",
+      "example": "now_dt = frappe.utils.now_datetime()",
+      "parameters": []
+    },
+    {
+      "name": "add_days",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.add_days(date: str | datetime, days: int) -> str",
+      "returnType": "str",
+      "returnDescription": "New calculated date string formatted as 'YYYY-MM-DD'.",
+      "docstring": "Adds or subtracts N days from a given date string or datetime object.",
+      "example": "due_date = frappe.utils.add_days(frappe.utils.today(), 30)",
+      "parameters": [
+        {
+          "name": "date",
+          "type": "str | datetime",
+          "structure": "\"2026-09-02\"",
+          "optional": false,
+          "description": "Starting date string or datetime object."
+        },
+        {
+          "name": "days",
+          "type": "int",
+          "optional": false,
+          "description": "Number of days to add (use negative number to subtract)."
+        }
+      ]
+    },
+    {
+      "name": "add_months",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.add_months(date: str | datetime, months: int) -> str",
+      "returnType": "str",
+      "returnDescription": "Calculated date string after adding months.",
+      "docstring": "Adds or subtracts N months from a date.",
+      "example": "next_quarter = frappe.utils.add_months(frappe.utils.today(), 3)",
+      "parameters": [
+        {
+          "name": "date",
+          "type": "str | datetime",
+          "optional": false,
+          "description": "Base date."
+        },
+        {
+          "name": "months",
+          "type": "int",
+          "optional": false,
+          "description": "Number of months to add."
+        }
+      ]
+    },
+    {
+      "name": "flt",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.flt(val: Any, precision: int = 2) -> float",
+      "returnType": "float",
+      "returnDescription": "Safely parsed float number (returns 0.0 if invalid/empty).",
+      "docstring": "Converts any string, None, or numeric value safely into a float with rounding.",
+      "example": "amount = frappe.utils.flt(doc.rate) * frappe.utils.flt(doc.qty)",
+      "parameters": [
+        {
+          "name": "val",
+          "type": "Any",
+          "optional": false,
+          "description": "Value to convert."
+        },
+        {
+          "name": "precision",
+          "type": "int",
+          "optional": true,
+          "default": "2",
+          "description": "Rounding decimal places."
+        }
+      ]
+    },
+    {
+      "name": "cint",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.cint(val: Any) -> int",
+      "returnType": "int",
+      "returnDescription": "Safely parsed integer (returns 0 if invalid/empty).",
+      "docstring": "Converts any string or value safely into an integer without throwing ValueError exceptions.",
+      "example": "count = frappe.utils.cint(doc.number_of_employees)",
+      "parameters": [
+        {
+          "name": "val",
+          "type": "Any",
+          "optional": false,
+          "description": "Value to convert to integer."
+        }
+      ]
+    },
+    {
+      "name": "money_in_words",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.money_in_words(number: float | int, currency: str = None) -> str",
+      "returnType": "str",
+      "returnDescription": "English text representation of currency amount.",
+      "docstring": "Converts a numeric amount into English words with currency prefix and cent/paise suffixes.",
+      "example": "text = frappe.utils.money_in_words(1500.50, \"USD\")",
+      "parameters": [
+        {
+          "name": "number",
+          "type": "float | int",
+          "optional": false,
+          "description": "Numeric money amount."
+        },
+        {
+          "name": "currency",
+          "type": "str",
+          "optional": true,
+          "description": "Currency name (e.g. 'USD', 'INR')."
+        }
+      ]
+    },
+    {
+      "name": "cstr",
+      "module": "frappe.utils",
+      "signature": "cstr(val: Any) -> str",
+      "returnType": "str",
+      "docstring": "Converts value safely to string (None becomes '').",
+      "example": "safe_text = cstr(doc.description).strip()",
+      "parameters": [
+        {
+          "name": "val",
+          "type": "Any",
+          "optional": false,
+          "description": "Value to convert"
+        }
+      ],
+      "returnDescription": "Clean string representation (None becomes empty string '')."
+    },
+    {
+      "name": "getdate",
+      "module": "frappe.utils",
+      "signature": "getdate(date_str: str | datetime = None) -> datetime.date",
+      "returnType": "datetime.date",
+      "docstring": "Converts date string or object safely into python datetime.date object.",
+      "example": "date_obj = getdate('2026-09-03')",
+      "parameters": [
+        {
+          "name": "date_str",
+          "type": "str | datetime",
+          "optional": true,
+          "description": "Date string"
+        }
+      ],
+      "returnDescription": "Python datetime.date object."
+    },
+    {
+      "name": "get_datetime",
+      "module": "frappe.utils",
+      "signature": "get_datetime(datetime_str: str = None) -> datetime.datetime",
+      "returnType": "datetime.datetime",
+      "docstring": "Converts datetime string into python datetime.datetime object.",
+      "example": "dt = get_datetime('2026-09-03 14:00:00')",
+      "parameters": [
+        {
+          "name": "datetime_str",
+          "type": "str",
+          "optional": true,
+          "description": "Timestamp string"
+        }
+      ],
+      "returnDescription": "Python datetime.datetime object."
+    },
+    {
+      "name": "add_to_date",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.add_to_date(date: str | datetime, years: int = 0, months: int = 0, days: int = 0, hours: int = 0, as_string: bool = False) -> datetime | str",
+      "returnType": "datetime.date | str",
+      "docstring": "Adds time offsets (years, months, days, hours) to a date.",
+      "example": "next_month = add_to_date(today(), months=1, as_string=True)",
+      "parameters": [
+        {
+          "name": "date",
+          "type": "str | datetime",
+          "structure": "\"2026-09-03\" | now_datetime()",
+          "optional": false,
+          "description": "Base date or datetime object/string."
+        },
+        {
+          "name": "years",
+          "type": "int",
+          "structure": "1",
+          "optional": true,
+          "default": "0",
+          "description": "Years offset."
+        },
+        {
+          "name": "months",
+          "type": "int",
+          "structure": "3",
+          "optional": true,
+          "default": "0",
+          "description": "Months offset."
+        },
+        {
+          "name": "days",
+          "type": "int",
+          "structure": "15",
+          "optional": true,
+          "default": "0",
+          "description": "Days offset."
+        },
+        {
+          "name": "hours",
+          "type": "int",
+          "structure": "4",
+          "optional": true,
+          "default": "0",
+          "description": "Hours offset."
+        },
+        {
+          "name": "as_string",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Return formatted string instead of datetime object."
+        }
+      ],
+      "returnDescription": "Modified datetime or date string offset by given units."
+    },
+    {
+      "name": "time_diff_in_seconds",
+      "module": "frappe.utils",
+      "signature": "time_diff_in_seconds(datetime1: datetime | str, datetime2: datetime | str) -> float",
+      "returnType": "float",
+      "docstring": "Calculates difference in seconds between two timestamps.",
+      "example": "secs = time_diff_in_seconds(doc.end_time, doc.start_time)",
+      "parameters": [
+        {
+          "name": "datetime1",
+          "type": "str | datetime",
+          "optional": false,
+          "description": "End timestamp"
+        },
+        {
+          "name": "datetime2",
+          "type": "str | datetime",
+          "optional": false,
+          "description": "Start timestamp"
+        }
+      ],
+      "returnDescription": "Seconds elapsed between two timestamps (float)."
+    },
+    {
+      "name": "date_diff",
+      "module": "frappe.utils",
+      "signature": "date_diff(date1: str | datetime, date2: str | datetime) -> int",
+      "returnType": "int",
+      "docstring": "Returns difference in days between two date strings (date1 - date2).",
+      "example": "days_count = date_diff(doc.to_date, doc.from_date)",
+      "parameters": [
+        {
+          "name": "date1",
+          "type": "str | datetime",
+          "optional": false,
+          "description": "End date"
+        },
+        {
+          "name": "date2",
+          "type": "str | datetime",
+          "optional": false,
+          "description": "Start date"
+        }
+      ],
+      "returnDescription": "Day count difference (date1 - date2 as integer)."
+    },
+    {
+      "name": "get_link_to_form",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.get_link_to_form(doctype: str, name: str, label: str = None) -> str",
+      "returnType": "str (HTML <a> link)",
+      "docstring": "Generates HTML clickable link to Frappe Desk document view.",
+      "example": "link = get_link_to_form('Employee', doc.name, doc.employee_name)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"SO-0001\"",
+          "optional": false,
+          "description": "Document name / ID."
+        },
+        {
+          "name": "label",
+          "type": "str",
+          "structure": "\"View Sales Order\"",
+          "optional": true,
+          "description": "Anchor link text (defaults to name)."
+        }
+      ],
+      "returnDescription": "Clickable HTML <a> anchor tag linking to Desk form view."
+    },
+    {
+      "name": "validate_email_address",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.validate_email_address(email_str: str, throw: bool = False) -> str",
+      "returnType": "str",
+      "docstring": "Validates email address syntax, throws exception if throw=True.",
+      "example": "clean_email = validate_email_address(email_input, throw=True)",
+      "parameters": [
+        {
+          "name": "email_str",
+          "type": "str",
+          "structure": "\"user@example.com\"",
+          "optional": false,
+          "description": "Email string to validate."
+        },
+        {
+          "name": "throw",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Raise InvalidEmailAddress exception on validation failure."
+        }
+      ],
+      "returnDescription": "Normalized email address string."
+    },
+    {
+      "name": "safe_json_loads",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.safe_json_loads(data: str, default: any = None) -> dict | list | any",
+      "returnType": "Any",
+      "docstring": "Safely parses JSON string without raising exceptions.",
+      "example": "parsed = safe_json_loads(payload, default={})",
+      "parameters": [
+        {
+          "name": "data",
+          "type": "str",
+          "structure": "\"{\\\"key\\\": \\\"value\\\"}\"",
+          "optional": false,
+          "description": "Raw JSON string to parse."
+        },
+        {
+          "name": "default",
+          "type": "any",
+          "structure": "{}",
+          "optional": true,
+          "default": "None",
+          "description": "Fallback return value if JSON parsing fails."
+        }
+      ],
+      "returnDescription": "Parsed Python dictionary/list or default fallback."
+    }
+  ],
+  "frappe.permissions": [
+    {
+      "name": "has_permission",
+      "module": "frappe.permissions",
+      "signature": "frappe.has_permission(doctype: str, ptype: str = 'read', doc: Document = None, user: str = None) -> bool",
+      "returnType": "bool",
+      "returnDescription": "True if permitted, False otherwise.",
+      "docstring": "Checks if the specified user has permission (read, write, create, delete, submit, cancel) on a DocType or specific document.",
+      "example": "if not frappe.has_permission(\"Salary Slip\", \"write\", doc=self):\n    frappe.throw(\"Permission Denied\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Salary Slip\"",
+          "optional": false,
+          "description": "DocType name."
+        },
+        {
+          "name": "ptype",
+          "type": "str",
+          "structure": "\"read\" | \"write\" | \"create\" | \"delete\" | \"submit\" | \"cancel\"",
+          "optional": true,
+          "default": "\"read\"",
+          "description": "Permission action type."
+        },
+        {
+          "name": "doc",
+          "type": "Document | str",
+          "optional": true,
+          "description": "Document instance or ID."
+        },
+        {
+          "name": "user",
+          "type": "str",
+          "optional": true,
+          "description": "User ID."
+        }
+      ]
+    },
+    {
+      "name": "only_for",
+      "module": "frappe.permissions",
+      "signature": "frappe.only_for(roles: list[str] | str)",
+      "returnType": "None",
+      "returnDescription": "None. Raises PermissionError if unauthorized.",
+      "docstring": "Restricts execution to users with at least one of the specified roles; raises frappe.PermissionError otherwise.",
+      "example": "frappe.only_for([\"HR Manager\", \"System Manager\"])",
+      "parameters": [
+        {
+          "name": "roles",
+          "type": "list[str] | str",
+          "structure": "[\"HR Manager\", \"System Manager\"]",
+          "optional": false,
+          "description": "Required role(s)."
+        }
+      ]
+    },
+    {
+      "name": "get_roles",
+      "module": "frappe.permissions",
+      "signature": "frappe.get_roles(user: str = None) -> list[str]",
+      "returnType": "list[str]",
+      "returnDescription": "List of role names assigned to user.",
+      "docstring": "Returns all role names assigned to the given user.",
+      "example": "roles = frappe.get_roles()",
+      "parameters": [
+        {
+          "name": "user",
+          "type": "str",
+          "optional": true,
+          "description": "User ID."
+        }
+      ]
+    }
+  ],
+  "frappe.model.naming": [
+    {
+      "name": "make_autoname",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.make_autoname(key: str, doctype: str = None) -> str",
+      "returnType": "str",
+      "returnDescription": "Unique generated naming series ID.",
+      "docstring": "Generates a unique document naming ID based on a series pattern (e.g. `ACC-SINV-.YYYY.-.#####`).",
+      "example": "self.name = frappe.model.naming.make_autoname(\"SAL-SLIP-.YYYY.-.#####\", self.doctype)",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"INV-.YYYY.-.#####\"",
+          "optional": false,
+          "description": "Naming series pattern or format string."
+        },
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "description": "Reference DocType name."
+        }
+      ]
+    }
+  ],
+  "frappe.cache": [
+    {
+      "name": "get_value",
+      "module": "frappe.cache",
+      "signature": "frappe.cache.get_value(key: str, generator: callable = None, expires_in_sec: int = None) -> any",
+      "returnType": "Any",
+      "returnDescription": "Cached value from Redis memory.",
+      "docstring": "Retrieves a cached value from Redis memory. If not found, calls generator function to compute and cache the value.",
+      "example": "data = frappe.cache().get_value(\"my_custom_key\")",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"my_app:cached_data\"",
+          "optional": false,
+          "description": "Redis cache key string."
+        },
+        {
+          "name": "generator",
+          "type": "callable",
+          "optional": true,
+          "description": "Callable function to compute and set cache value if key is missing."
+        },
+        {
+          "name": "expires_in_sec",
+          "type": "int",
+          "structure": "3600",
+          "optional": true,
+          "description": "Expiration time in seconds."
+        }
+      ]
+    },
+    {
+      "name": "set_value",
+      "module": "frappe.cache",
+      "signature": "frappe.cache.set_value(key: str, val: any, expires_in_sec: int = None) -> None",
+      "returnType": "None",
+      "returnDescription": "None.",
+      "docstring": "Saves a value into Redis memory cache with optional expiration time.",
+      "example": "frappe.cache().set_value(\"my_custom_key\", data, expires_in_sec=3600)",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"my_app:cached_data\"",
+          "optional": false,
+          "description": "Redis cache key string."
+        },
+        {
+          "name": "val",
+          "type": "any",
+          "structure": "{\"result\": 42}",
+          "optional": false,
+          "description": "Value to serialize and store into Redis."
+        },
+        {
+          "name": "expires_in_sec",
+          "type": "int",
+          "structure": "3600",
+          "optional": true,
+          "description": "Expiration TTL in seconds."
+        }
+      ]
+    }
+  ],
+  "frappe.qb": [
+    {
+      "name": "DocType",
+      "module": "frappe.qb",
+      "signature": "frappe.qb.DocType(name: str) -> Table",
+      "returnType": "Table",
+      "returnDescription": "QueryBuilder Table reference object.",
+      "docstring": "Creates a typed table reference for PyPika QueryBuilder expressions.",
+      "example": "Employee = frappe.qb.DocType(\"Employee\")\nquery = (frappe.qb.from_(Employee)\n    .select(Employee.name, Employee.employee_name)\n    .where(Employee.status == \"Active\"))\nresults = query.run(as_dict=True)",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "Name of DocType table."
+        }
+      ]
+    },
+    {
+      "name": "from_",
+      "module": "frappe.qb",
+      "signature": "frappe.qb.from_(table: Table | str) -> QueryBuilder",
+      "returnType": "QueryBuilder",
+      "returnDescription": "Chainable QueryBuilder query.",
+      "docstring": "Starts building a type-safe SQL query expression.",
+      "example": "query = frappe.qb.from_(\"User\").select(\"name\", \"email\").where(User.enabled == 1)",
+      "parameters": [
+        {
+          "name": "table",
+          "type": "Table | str",
+          "optional": false,
+          "description": "Table instance or DocType name."
+        }
+      ]
+    },
+    {
+      "name": "Table",
+      "module": "frappe.qb",
+      "signature": "frappe.qb.Table(table_name: str) -> Table",
+      "returnType": "Table",
+      "docstring": "Creates QueryBuilder Table instance for raw SQL table.",
+      "example": "tab = frappe.qb.Table('tabEmployee')",
+      "parameters": [
+        {
+          "name": "table_name",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": false,
+          "description": "DocType or table identifier to bind."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "DocType Controller Class": {
+    "prefix": "frappe-doctype-class",
+    "body": [
+      "import frappe",
+      "from frappe.model.document import Document",
+      "",
+      "class ${1:DocTypeName}(Document):",
+      "\tdef validate(self):",
+      "\t\t${0:pass}",
+      "",
+      "\tdef before_save(self):",
+      "\t\tpass",
+      "",
+      "\tdef on_submit(self):",
+      "\t\tpass",
+      "",
+      "\tdef on_cancel(self):",
+      "\t\tpass"
+    ],
+    "description": "Standard Frappe Document Controller Class Boilerplate"
+  },
+  "Whitelisted Function": {
+    "prefix": "frappe-whitelist",
+    "body": [
+      "@frappe.whitelist(${1:allow_guest=False})",
+      "def ${2:function_name}(${3:args}):",
+      "\t\"\"\"${4:Description}\"\"\"",
+      "\t${0:return {\"status\": \"success\"}}"
+    ],
+    "description": "Create a Frappe whitelisted backend API method"
+  },
+  "Get Doc": {
+    "prefix": "frappe-get-doc",
+    "body": [
+      "doc = frappe.get_doc(\"${1:DocType}\", ${2:name})",
+      "${0}"
+    ],
+    "description": "frappe.get_doc boilerplate"
+  },
+  "Get All Records": {
+    "prefix": "frappe-get-all",
+    "body": [
+      "${1:records} = frappe.get_all(",
+      "\t\"${2:DocType}\",",
+      "\tfilters={${3}},",
+      "\tfields=[${4:\"name\"}],",
+      "\torder_by=\"${5:creation desc}\"",
+      ")"
+    ],
+    "description": "frappe.get_all query boilerplate"
+  },
+  "Database Get Value": {
+    "prefix": "frappe-db-get-value",
+    "body": [
+      "${1:value} = frappe.db.get_value(\"${2:DocType}\", ${3:filters}, \"${4:fieldname}\")"
+    ],
+    "description": "frappe.db.get_value snippet"
+  },
+  "Database Set Value": {
+    "prefix": "frappe-db-set-value",
+    "body": [
+      "frappe.db.set_value(\"${1:DocType}\", ${2:name}, \"${3:fieldname}\", ${4:value})"
+    ],
+    "description": "frappe.db.set_value snippet"
+  },
+  "Frappe Throw": {
+    "prefix": "frappe-throw",
+    "body": [
+      "frappe.throw(\"${1:Error message}\", title=\"${2:Validation Error}\")"
+    ],
+    "description": "frappe.throw exception snippet"
+  },
+  "Frappe Query Builder": {
+    "prefix": "frappe-qb",
+    "body": [
+      "${1:doc} = frappe.qb.DocType(\"${2:DocType}\")",
+      "query = (",
+      "\tfrappe.qb.from_(${1:doc})",
+      "\t.select(${1:doc}.${3:name})",
+      "\t.where(${1:doc}.${4:status} == \"${5:Active}\")",
+      ")",
+      "${6:result} = query.run(as_dict=True)"
+    ],
+    "description": "Frappe Query Builder (frappe.qb) snippet"
+  },
+  "FrappeTestCase Unit Test": {
+    "prefix": "frappe-test-case",
+    "body": [
+      "import frappe",
+      "from frappe.tests.utils import FrappeTestCase",
+      "",
+      "class Test${1:DocTypeName}(FrappeTestCase):",
+      "\tdef setUp(self):",
+      "\t\t${2:pass}",
+      "",
+      "\tdef test_${3:feature}(self):",
+      "\t\t${0:pass}",
+      "",
+      "\tdef tearDown(self):",
+      "\t\tfrappe.db.rollback()"
+    ],
+    "description": "Standard Frappe Unit Test Case (FrappeTestCase) Boilerplate"
+  },
+  "Portal Page Context": {
+    "prefix": "frappe-portal-context",
+    "body": [
+      "import frappe",
+      "",
+      "def get_context(context):",
+      "\tcontext.no_cache = 1",
+      "\tcontext.title = \"${1:Page Title}\"",
+      "\tcontext.parents = [{\"name\": \"${2:home}\", \"title\": \"${3:Home}\"}]",
+      "\tcontext.${4:data} = ${0:[]}"
+    ],
+    "description": "Frappe Portal Page get_context(context) Boilerplate"
+  },
+  "Server Script API": {
+    "prefix": "frappe-server-script-api",
+    "body": [
+      "# Server Script (API type)",
+      "param = frappe.form_dict.get(\"${1:param}\")",
+      "if not param:",
+      "\tfrappe.throw(\"Missing required parameter: ${1:param}\")",
+      "",
+      "frappe.response[\"message\"] = {",
+      "\t\"status\": \"success\",",
+      "\t\"data\": ${0:param}",
+      "}"
+    ],
+    "description": "Frappe Server Script API Endpoint Template"
+  },
+  "Enqueue Background Job": {
+    "prefix": "frappe-enqueue",
+    "body": [
+      "frappe.enqueue(",
+      "\t\"${1:app.module.method_name}\",",
+      "\tqueue=\"${2|default,short,long|}\",",
+      "\ttimeout=${3:300},",
+      "\tis_async=True,",
+      "\t${4:kwarg}=${5:value}",
+      ")"
+    ],
+    "description": "Enqueue a background job with Frappe Redis worker queue"
+  },
+  "Database Transaction Savepoint": {
+    "prefix": "frappe-db-savepoint",
+    "body": [
+      "frappe.db.savepoint(\"${1:sp_name}\")",
+      "try:",
+      "\t${0}",
+      "except Exception as e:",
+      "\tfrappe.db.rollback(save_point=\"${1:sp_name}\")",
+      "\tfrappe.log_error(title=\"${2:Operation Failed}\")",
+      "\traise e"
+    ],
+    "description": "Safe database transaction savepoint with error rollback"
+  },
+  "Send Email with Template": {
+    "prefix": "frappe-sendmail",
+    "body": [
+      "frappe.sendmail(",
+      "\trecipients=[${1:\"user@example.com\"}],",
+      "\tsubject=\"${2:Subject}\",",
+      "\ttemplate=\"${3:email_template}\",",
+      "\targs={",
+      "\t\t${4}",
+      "\t},",
+      "\tnow=False",
+      ")"
+    ],
+    "description": "Send email with Jinja template and context args"
+  },
+  "Script Report Boilerplate": {
+    "prefix": "frappe-script-report",
+    "body": [
+      "import frappe",
+      "from frappe import _",
+      "",
+      "def execute(filters=None):",
+      "\tcolumns = get_columns()",
+      "\tdata = get_data(filters)",
+      "\treturn columns, data",
+      "",
+      "def get_columns():",
+      "\treturn [",
+      "\t\t{\"label\": _(\"ID\"), \"fieldname\": \"name\", \"fieldtype\": \"Link\", \"options\": \"${1:DocType}\", \"width\": 120},",
+      "\t\t{\"label\": _(\"Status\"), \"fieldname\": \"status\", \"fieldtype\": \"Data\", \"width\": 100},",
+      "\t]",
+      "",
+      "def get_data(filters):",
+      "\tconditions = {}",
+      "\tif filters and filters.get(\"status\"):",
+      "\t\tconditions[\"status\"] = filters.get(\"status\")",
+      "\treturn frappe.get_all(\"${1:DocType}\", filters=conditions, fields=[\"name\", \"status\"])"
+    ],
+    "description": "Frappe Script Report (execute, get_columns, get_data) Boilerplate"
+  }
+}
