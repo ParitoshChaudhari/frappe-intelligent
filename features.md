@@ -83,7 +83,14 @@
 
 ---
 
-## 🛠️ 9. Bench CLI Commands & Active Site Selector
+## 🛠️ 9. Bench CLI Commands, Interactive Runner & Terminal Shell Completions
+- **Interactive Bench Command Palette (`Frappe: Run Bench Command...`)**:
+  - Searchable QuickPick palette with auto-suggestions for all 30+ bench CLI commands grouped by category (**Site Operations**, **App & Code Operations**, **Workers & Scheduler**, **System & Database**).
+  - Automatically attaches `--site <active_site>` for site-aware commands.
+  - Interactive parameter auto-suggestion for installed Frappe apps and workspace DocTypes.
+- **Terminal Shell Auto-completion (`Frappe: Setup Bench Terminal Shell Auto-completion`)**:
+  - One-click configuration of Click-based `<Tab>` shell completions in `~/.zshrc` / `~/.bashrc` / `~/.config/fish/config.fish`.
+  - Automatic session completion injection into the integrated `Frappe Bench` terminal for instant `bench <Tab>` and `bench --site <Tab>` suggestions.
 - **Site Auto-Discovery**: Automatically discovers sites from `sites/` directory or parent bench paths, auto-selecting `currentsite.txt` and supporting manual custom site entry.
 - **Status Bar Integration**: Live active site indicator in the status bar with instant site switching.
 - **Bench Management Commands**:

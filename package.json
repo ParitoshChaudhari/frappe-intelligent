@@ -74,6 +74,16 @@
     ],
     "commands": [
       {
+        "command": "frappeIntelligent.runBenchCommand",
+        "title": "Frappe: Run Bench Command...",
+        "category": "Frappe Intelligent"
+      },
+      {
+        "command": "frappeIntelligent.setupTerminalCompletions",
+        "title": "Frappe: Setup Bench Terminal Shell Auto-completion",
+        "category": "Frappe Intelligent"
+      },
+      {
         "command": "frappeIntelligent.selectActiveSite",
         "title": "Frappe: Select Active Site",
         "category": "Frappe Intelligent"

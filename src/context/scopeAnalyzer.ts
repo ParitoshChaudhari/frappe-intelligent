@@ -61,11 +61,16 @@ export class ScopeAnalyzer {
     const hasParen = textBeforeCursor.includes('(');
     const hasBrace = textBeforeCursor.includes('{');
 
-    // 3. Detect object member access (e.g. `frappe.db.`, `frm.fields_dict.`, `frm.`, `doc.`, `self.`)
+    // 3. Detect object member access (e.g. `frappe.db.`, `frm.fields_dict.`, `locals[cdt][cdn].`, `frm.`, `doc.`, `self.`)
     if (hasDot) {
-      const memberAccessMatch = textBeforeCursorOnLine.match(/(?:([a-zA-Z0-9_$.()]+)\.)([a-zA-Z0-9_$]*)$/);
+      const memberAccessMatch = textBeforeCursorOnLine.match(/(?:([a-zA-Z0-9_$.()[\]'"]+)\.)([a-zA-Z0-9_$]*)$/);
       if (memberAccessMatch) {
         context.targetObject = memberAccessMatch[1];
+
+        // If target ends with .grid (e.g. frm.fields_dict['items'].grid or frm.get_field('items').grid)
+        if (context.targetObject.endsWith('grid') || context.targetObject.includes('.grid')) {
+          context.targetObject = 'grid';
+        }
 
         // Child Table Row Property Access Detection in Python (e.g. `row.` or `item.`)
         if (fileInfo.isServerCode && fileInfo.doctypeName && ['row', 'item', 'd', 'child'].includes(context.targetObject)) {
@@ -75,11 +80,18 @@ export class ScopeAnalyzer {
           }
         }
 
-        // Child Table Row in JavaScript (e.g. `row.`, `d.`, `child.`)
-        if (fileInfo.isClientCode && fileInfo.doctypeName && ['row', 'd', 'child', 'item'].includes(context.targetObject)) {
-          const inferredDt = this.inferChildTableDocTypeFromJs(fullContent || lineText, fileInfo.doctypeName, context.targetObject);
-          if (inferredDt) {
-            context.childTableRowDocType = inferredDt;
+        // Child Table Row in JavaScript (e.g. `row.`, `d.`, `child.`, `locals[cdt][cdn].`)
+        if (fileInfo.isClientCode) {
+          if (context.targetObject === 'locals[cdt][cdn]' || context.targetObject.startsWith('locals[')) {
+            const inferredDt = this.inferChildTableDocTypeFromJs(fullContent || lineText, fileInfo.doctypeName || '', 'row') || fileInfo.doctypeName;
+            if (inferredDt) {
+              context.childTableRowDocType = inferredDt;
+            }
+          } else if (['row', 'd', 'child', 'item'].includes(context.targetObject)) {
+            const inferredDt = this.inferChildTableDocTypeFromJs(fullContent || lineText, fileInfo.doctypeName || '', context.targetObject);
+            if (inferredDt) {
+              context.childTableRowDocType = inferredDt;
+            }
           }
         }
 
@@ -239,13 +251,23 @@ export class ScopeAnalyzer {
     rowVarName: string
   ): string | undefined {
     const index = IndexManager.getInstance();
-    // Match JS: `let row = frm.add_child('items');` or `const d = locals[cdt][cdn];`
+    // 1. Match JS: `let row = frm.add_child('items');`
     const addChildRegex = new RegExp(`(?:let|const|var)\\s+${rowVarName}\\s*=\\s*(?:frm|cur_frm)\\.add_child\\(['"]([^'"]+)['"]\\)`);
     const match = content.match(addChildRegex);
     if (match && match[1]) {
       const tableFieldName = match[1];
       return index.getChildDocTypeName(parentDocType, tableFieldName);
     }
+
+    // 2. Match JS: `const row = locals[cdt][cdn];` inside child table trigger
+    const localsRegex = new RegExp(`(?:let|const|var)?\\s*${rowVarName}\\s*=\\s*locals\\[cdt\\]\\[cdn\\]`);
+    if (localsRegex.test(content) || rowVarName === 'row') {
+      const formOnMatch = content.match(/frappe\.ui\.form\.on\(\s*['"]([^'"]+)['"]/);
+      if (formOnMatch && formOnMatch[1]) {
+        return formOnMatch[1];
+      }
+    }
+
     return undefined;
   }
 

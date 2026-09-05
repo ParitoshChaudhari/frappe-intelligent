@@ -38,6 +38,9 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
   private static cachedJsWebForm: vscode.CompletionItem[] = [];
   private static cachedJsListViewSettings: vscode.CompletionItem[] = [];
   private static cachedFormListView: vscode.CompletionItem[] = [];
+  private static cachedJsLocals: vscode.CompletionItem[] = [];
+  private static cachedJsGlobals: vscode.CompletionItem[] = [];
+  private static cachedJsUi: vscode.CompletionItem[] = [];
 
   private static cachedHooks: vscode.CompletionItem[] = [];
   private static cachedDfProps: vscode.CompletionItem[] = [];
@@ -78,6 +81,15 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     this.cachedJsWebForm = this.buildItems((jsApis as any)['frappe.web_form'], vscode.CompletionItemKind.Method, 'javascript');
     this.cachedJsListViewSettings = this.buildItems((jsApis as any)['frappe.listview_settings'], vscode.CompletionItemKind.Property, 'javascript');
     this.cachedFormListView = this.buildItems((formApis as any)['listview'], vscode.CompletionItemKind.Method, 'javascript');
+    this.cachedJsLocals = this.buildItems((jsApis as any)['locals'] || [], vscode.CompletionItemKind.Variable, 'javascript');
+    this.cachedJsGlobals = this.buildItems((jsApis as any)['frappe.globals'] || [], vscode.CompletionItemKind.Variable, 'javascript');
+
+    const uiNamespaces = ['Dialog', 'form', 'toolbar', 'keys', 'misc'];
+    this.cachedJsUi = uiNamespaces.map((ns) => {
+      const item = new vscode.CompletionItem(ns, vscode.CompletionItemKind.Module);
+      item.detail = `frappe.ui.${ns}`;
+      return item;
+    });
 
     // Hooks pre-caching
     this.cachedHooks = (hooksSchema as any).hooks.map((hook: any) => {
@@ -220,8 +232,8 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       return FrappeCompletionProvider.cachedJsWebForm;
     }
 
-    // JS Target: `listview.`
-    if (fileInfo.isClientCode && scope.targetObject === 'listview') {
+    // JS Target: `listview.` or `cur_list.`
+    if (fileInfo.isClientCode && (scope.targetObject === 'listview' || scope.targetObject === 'cur_list')) {
       return FrappeCompletionProvider.cachedFormListView;
     }
 
@@ -255,8 +267,18 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       return FrappeCompletionProvider.cachedJsUtils;
     }
 
-    // 7. JS Target: `dialog.` / `d.`
-    if (fileInfo.isClientCode && (scope.targetObject === 'dialog' || scope.targetObject === 'd')) {
+    // JS Target: `frappe.ui.`
+    if (fileInfo.isClientCode && scope.targetObject === 'frappe.ui') {
+      return FrappeCompletionProvider.cachedJsUi;
+    }
+
+    // JS Target: `frappe.ui.Dialog` or `Dialog.`
+    if (fileInfo.isClientCode && (scope.targetObject === 'frappe.ui.Dialog' || scope.targetObject === 'Dialog')) {
+      return FrappeCompletionProvider.cachedJsDialog;
+    }
+
+    // 7. JS Target: `dialog.` / `d.` / `cur_dialog.`
+    if (fileInfo.isClientCode && (scope.targetObject === 'dialog' || scope.targetObject === 'd' || scope.targetObject === 'cur_dialog')) {
       return FrappeCompletionProvider.cachedJsDialog;
     }
 
@@ -265,11 +287,22 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       return FrappeCompletionProvider.cachedJsGrid;
     }
 
-    // JS Target: `page.`
+    // JS Target: `page.` or `cur_page.`
     if (fileInfo.isClientCode && (scope.targetObject === 'page' || scope.targetObject === 'cur_page')) {
       return FrappeCompletionProvider.cachedFormPage;
     }
 
+    // JS Target: `locals[cdt][cdn].` or `locals.`
+    if (fileInfo.isClientCode && (scope.targetObject === 'locals[cdt][cdn]' || scope.targetObject?.startsWith('locals'))) {
+      const targetDt = scope.childTableRowDocType || scope.currentDocType;
+      if (targetDt) {
+        const schema = index.getDocType(targetDt);
+        if (schema) {
+          return this.buildFieldCompletionItems(schema);
+        }
+      }
+      return FrappeCompletionProvider.cachedJsLocals;
+    }
 
     // 9. Target Object: `frappe.db.`
     if (scope.targetObject === 'frappe.db') {
@@ -281,7 +314,7 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       const baseItems = fileInfo.isServerCode ? FrappeCompletionProvider.cachedPyFrappe : FrappeCompletionProvider.cachedJsFrappe;
       const namespaces = fileInfo.isServerCode
         ? ['db', 'utils', 'qb', 'cache', 'flags', 'session']
-        : ['db', 'ui', 'datetime', 'model', 'realtime', 'router', 'route_options'];
+        : ['db', 'ui', 'datetime', 'model', 'realtime', 'router', 'route_options', 'session'];
 
       const nsItems = namespaces.map((ns) => {
         const item = new vscode.CompletionItem(ns, vscode.CompletionItemKind.Module);
@@ -384,11 +417,25 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       'frappe.db.truncate',
       'frappe.db.get_doc',
       'frappe.db.get_list',
+      'frappe.db.insert',
       'frappe.qb.DocType',
       'frappe.qb.from_',
+      'frappe.model.get_doc',
       'frappe.model.get_value',
       'frappe.model.set_value',
+      'frappe.model.add_child',
+      'frappe.model.clear_table',
+      'frappe.model.delete_doc',
       'frappe.model.with_doctype',
+      'frappe.model.with_doc',
+      'frappe.model.is_submittable',
+      'frappe.model.is_single',
+      'frappe.model.is_tree',
+      'frappe.model.can_create',
+      'frappe.model.can_read',
+      'frappe.model.can_write',
+      'frappe.model.can_delete',
+      'frappe.model.can_cancel',
       'frappe.ui.form.on',
       'frappe.set_route',
     ];
@@ -411,7 +458,7 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     }
 
     // 15. DocField Name Completions inside Form Script Arguments
-    if (scope.callContext && ['frm.set_value', 'frm.get_value', 'frm.get_field', 'frm.toggle_display', 'frm.toggle_enable', 'frm.toggle_reqd', 'frm.set_df_property', 'frm.refresh_field', 'frm.set_query', 'doc.get', 'doc.set', 'doc.db_set'].includes(scope.callContext.callee)) {
+    if (scope.callContext && ['frm.set_value', 'frm.get_value', 'frm.get_field', 'frm.toggle_display', 'frm.toggle_enable', 'frm.toggle_reqd', 'frm.set_df_property', 'frm.refresh_field', 'frm.set_query', 'frm.add_child', 'frm.clear_table', 'doc.get', 'doc.set', 'doc.db_set'].includes(scope.callContext.callee)) {
       if (scope.callContext.argIndex === 0 && scope.currentDocType) {
         const schema = index.getDocType(scope.currentDocType);
         if (schema) {

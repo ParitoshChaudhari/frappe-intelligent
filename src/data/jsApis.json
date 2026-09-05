@@ -5,9 +5,9 @@
       "module": "frappe",
       "signature": "frappe.call(options: object): Promise<any>",
       "returnType": "Promise<any>",
-      "returnDescription": "Promise that resolves with server response r.message.",
+      "returnDescription": "Promise that resolves with server response object `r` containing `r.message`.",
       "docstring": "Sends an AJAX request to execute a whitelisted backend Python function on the server.",
-      "example": "frappe.call({\n    method: \"my_app.api.get_employee_details\",\n    args: { employee_id: \"EMP-001\" },\n    freeze: true,\n    callback: function(r) {\n        console.log(r.message);\n    }\n});",
+      "example": "frappe.call({\n    method: \"my_app.api.get_employee_details\",\n    args: { employee_id: \"EMP-001\" },\n    freeze: true,\n    freeze_message: __(\"Loading employee details...\"),\n    callback: function(r) {\n        if (r.message) {\n            console.log(\"Employee details:\", r.message);\n        }\n    }\n});",
       "parameters": [
         {
           "name": "options",
@@ -23,7 +23,7 @@
       "module": "frappe",
       "signature": "frappe.xcall(method: string, args?: object): Promise<any>",
       "returnType": "Promise<any>",
-      "returnDescription": "Promise resolving directly to r.message payload.",
+      "returnDescription": "Promise resolving directly to the `r.message` payload returned by the server.",
       "docstring": "Modern Promise-based shorthand for `frappe.call`. Can be directly `await`ed in async JavaScript functions.",
       "example": "const message = await frappe.xcall(\"my_app.api.get_employee_details\", {\n    employee_id: \"EMP-001\"\n});\nconsole.log(message);",
       "parameters": [
@@ -82,12 +82,12 @@
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Displays a popup modal message dialog to the user in the desk.",
-      "example": "frappe.msgprint(__(\"Document has been updated!\"));",
+      "example": "frappe.msgprint({\n    title: __(\"Notification\"),\n    message: __(\"Document has been updated successfully!\"),\n    indicator: \"green\"\n});",
       "parameters": [
         {
           "name": "msg",
           "type": "string | object",
-          "structure": "__(\"Operation succeeded\")",
+          "structure": "__(\"Operation succeeded\") OR { title: \"Done\", message: \"Saved\", indicator: \"green\" }",
           "optional": false,
           "description": "Message content or configuration object."
         },
@@ -138,15 +138,16 @@
       "module": "frappe",
       "signature": "frappe.throw(msg: string | object)",
       "returnType": "void",
-      "returnDescription": "Never returns — throws client exception.",
+      "returnDescription": "Never returns — throws client exception and halts execution.",
       "docstring": "Displays a red error modal dialog and stops JavaScript execution.",
-      "example": "frappe.throw(__(\"Please fill all mandatory fields.\"));",
+      "example": "frappe.throw(__(\"Please fill all mandatory fields before submitting.\"));",
       "parameters": [
         {
           "name": "msg",
-          "type": "string",
+          "type": "string | object",
+          "structure": "__(\"Mandatory fields missing\")",
           "optional": false,
-          "description": "Error message text."
+          "description": "Error message text or error options object."
         }
       ]
     },
@@ -156,69 +157,68 @@
       "signature": "frappe.confirm(message: string, if_yes: () => void, if_no?: () => void): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Displays a Yes / No confirmation dialog before executing an action.",
-      "example": "frappe.confirm(__(\"Are you sure you want to reset this form?\"), () => frm.reload_doc());",
+      "docstring": "Displays a confirmation dialog asking the user to confirm or cancel an action.",
+      "example": "frappe.confirm(\n    __(\"Are you sure you want to permanently delete this record?\"),\n    () => {\n        frappe.call({ method: \"my_app.api.delete_item\", args: { name: docname } });\n    },\n    () => {\n        frappe.show_alert({ message: __(\"Action cancelled\"), indicator: \"orange\" });\n    }\n);",
       "parameters": [
         {
           "name": "message",
           "type": "string",
           "structure": "__(\"Are you sure you want to proceed?\")",
           "optional": false,
-          "description": "Confirmation question prompt text."
+          "description": "Confirmation question text displayed in dialog."
         },
         {
           "name": "if_yes",
           "type": "function",
-          "structure": "() => { /* action */ }",
+          "structure": "() => { ... }",
           "optional": false,
-          "description": "Callback executed when user clicks Yes / Confirm."
+          "description": "Callback executed if user clicks Yes / Confirm."
         },
         {
           "name": "if_no",
           "type": "function",
-          "structure": "() => { /* cancel */ }",
+          "structure": "() => { ... }",
           "optional": true,
-          "description": "Callback executed when user clicks No / Cancel."
+          "description": "Callback executed if user clicks No / Cancel."
         }
       ]
     },
     {
       "name": "prompt",
       "module": "frappe",
-      "signature": "frappe.prompt(fields: object | object[], callback: (values: any) => void, title?: string, primary_action_label?: string): void",
+      "signature": "frappe.prompt(fields: object | object[], callback: (values: object) => void, title?: string, primary_action_label?: string): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Renders a quick input dialog with one or more fields to collect user input.",
-      "example": "frappe.prompt([\n    { fieldname: \"reason\", fieldtype: \"Small Text\", label: __(\"Reason\"), reqd: 1 }\n], function(values) {\n    console.log(values.reason);\n}, __(\"Enter Reason\"));",
+      "docstring": "Renders a quick input dialog prompt to collect values from the user before executing an action.",
+      "example": "frappe.prompt([\n    { fieldname: \"reason\", fieldtype: \"Small Text\", label: __(\"Rejection Reason\"), reqd: 1 },\n    { fieldname: \"notify_user\", fieldtype: \"Check\", label: __(\"Notify Submitter\"), default: 1 }\n], function(values) {\n    frappe.call({\n        method: \"my_app.api.reject_order\",\n        args: { order_id: cur_frm.doc.name, reason: values.reason }\n    });\n}, __(\"Reject Order\"), __(\"Confirm Rejection\"));",
       "parameters": [
         {
           "name": "fields",
           "type": "object | object[]",
-          "structure": "[\n    { fieldname: \"reason\", label: __(\"Reason\"), fieldtype: \"Data\", reqd: 1 }\n]",
+          "structure": "[\n    { fieldname: \"qty\", fieldtype: \"Float\", label: \"Quantity\", reqd: 1 }\n]",
           "optional": false,
-          "description": "Single field definition or list of DocField definition objects."
+          "description": "Field definitions array or single field definition object."
         },
         {
           "name": "callback",
           "type": "function",
-          "structure": "(values) => { console.log(values.reason); }",
+          "structure": "(values) => { ... }",
           "optional": false,
-          "description": "Callback invoked with form input values upon submission."
+          "description": "Callback receiving the submitted form values."
         },
         {
           "name": "title",
           "type": "string",
-          "structure": "\"Enter Cancellation Reason\"",
+          "structure": "\"Enter Details\"",
           "optional": true,
-          "description": "Modal title header."
+          "description": "Prompt dialog title."
         },
         {
           "name": "primary_action_label",
           "type": "string",
           "structure": "\"Submit\"",
           "optional": true,
-          "default": "Submit",
-          "description": "Primary action button label."
+          "description": "Label for the primary action button."
         }
       ]
     },
@@ -228,82 +228,82 @@
       "signature": "frappe.show_progress(title: string, count: number, total: number, description?: string): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Displays or updates a progress bar popup dialog on screen.",
-      "example": "frappe.show_progress(__(\"Importing Data\"), 45, 100, __(\"Processing row 45...\"));",
+      "docstring": "Displays a floating animated progress dialog with a progress bar in the desk UI.",
+      "example": "frappe.show_progress(__(\"Syncing Invoices\"), 45, 100, __(\"Processing invoice 45 of 100...\"));",
       "parameters": [
         {
           "name": "title",
           "type": "string",
-          "structure": "\"Processing Invoices\"",
+          "structure": "\"Processing\"",
           "optional": false,
-          "description": "Progress modal title heading."
+          "description": "Title displayed at top of progress dialog."
         },
         {
           "name": "count",
           "type": "number",
           "structure": "45",
           "optional": false,
-          "description": "Current completed step index."
+          "description": "Current completed item count."
         },
         {
           "name": "total",
           "type": "number",
           "structure": "100",
           "optional": false,
-          "description": "Total step count."
+          "description": "Total items to process."
         },
         {
           "name": "description",
           "type": "string",
-          "structure": "\"Updating invoice 45 of 100...\"",
+          "structure": "\"45 of 100 finished\"",
           "optional": true,
-          "description": "Detailed step description."
+          "description": "Descriptive subtitle below the progress bar."
         }
       ]
     },
     {
       "name": "hide_progress",
       "module": "frappe",
-      "signature": "frappe.hide_progress()",
+      "signature": "frappe.hide_progress(): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Closes and dismisses the progress bar dialog.",
+      "docstring": "Hides and dismisses the currently active progress dialog.",
       "example": "frappe.hide_progress();",
       "parameters": []
     },
     {
       "name": "provide",
       "module": "frappe",
-      "signature": "frappe.provide(namespace: string)",
-      "returnType": "void",
-      "returnDescription": "None.",
-      "docstring": "Initializes a nested object namespace on the global window object (e.g. `frappe.provide('my_app.utils')`).",
-      "example": "frappe.provide(\"my_app.payroll\");\nmy_app.payroll.calculate = function() { ... };",
+      "signature": "frappe.provide(namespace: string): object",
+      "returnType": "object",
+      "returnDescription": "The created or existing namespace object.",
+      "docstring": "Initializes a nested namespace object on `window` (e.g. `frappe.provide('erpnext.accounts')`) to prevent `undefined` errors.",
+      "example": "frappe.provide(\"my_app.utils\");\nmy_app.utils.custom_helper = function() { ... };",
       "parameters": [
         {
           "name": "namespace",
           "type": "string",
-          "structure": "\"my_app.utils\"",
+          "structure": "\"my_app.sales\"",
           "optional": false,
-          "description": "Dotted namespace string."
+          "description": "Dot-separated namespace string to create."
         }
       ]
     },
     {
       "name": "set_route",
       "module": "frappe",
-      "signature": "frappe.set_route(...path: string[]) -> Promise<void>",
+      "signature": "frappe.set_route(...path: string[]): Promise<void>",
       "returnType": "Promise<void>",
-      "returnDescription": "Promise resolving when route transition completes.",
-      "docstring": "Navigates the desk UI to the specified route (e.g. Form, List, Tree, Page).",
-      "example": "frappe.set_route(\"Form\", \"Employee\", \"EMP-001\");",
+      "returnDescription": "Promise resolving once page router navigates to destination.",
+      "docstring": "Navigates the Frappe Single Page App to the given route.",
+      "example": "frappe.set_route(\"Form\", \"Sales Order\", \"SO-2026-0001\");\nfrappe.set_route(\"List\", \"Customer\", \"Report\");",
       "parameters": [
         {
           "name": "...path",
           "type": "string[]",
-          "structure": "[\"Form\", \"Employee\", \"EMP-001\"]",
+          "structure": "[\"Form\", \"Sales Order\", \"SO-2026-0001\"]",
           "optional": false,
-          "description": "Route path segments."
+          "description": "Route segments array or comma-separated strings."
         }
       ]
     },
@@ -312,16 +312,642 @@
       "module": "frappe",
       "signature": "frappe.show_modal(options: object): void",
       "returnType": "void",
-      "docstring": "Displays a desk modal popup with HTML content.",
-      "example": "frappe.show_modal({ title: __('Details'), content: '<p>Content</p>' });",
-      "returnDescription": "None (Opens desk modal window).",
+      "returnDescription": "None.",
+      "docstring": "Renders a Bootstrap modal dialog with custom HTML body content.",
+      "example": "frappe.show_modal({\n    title: __(\"Quick Help\"),\n    body: \"<p>Click <b>Submit</b> once all approvals are received.</p>\"\n});",
       "parameters": [
         {
           "name": "options",
           "type": "object",
-          "structure": "{\n    title: \"Details\",\n    content: \"<p>Modal body</p>\"\n}",
+          "structure": "{ title: \"Help\", body: \"<p>Instructions...</p>\" }",
           "optional": false,
-          "description": "Modal configuration object with title, content HTML, and optional footer."
+          "description": "Modal configuration options."
+        }
+      ]
+    },
+    {
+      "name": "require",
+      "module": "frappe",
+      "signature": "frappe.require(assets: string | string[], callback?: () => void): Promise<void>",
+      "returnType": "Promise<void>",
+      "returnDescription": "Promise resolving after all JS/CSS asset files are dynamically loaded and executed.",
+      "docstring": "Dynamically loads JavaScript or CSS asset bundles on demand.",
+      "example": "frappe.require([\"/assets/my_app/js/chart.min.js\", \"/assets/my_app/css/style.css\"], function() {\n    // Asset loaded, initialize library\n    new Chart(...);\n});",
+      "parameters": [
+        {
+          "name": "assets",
+          "type": "string | string[]",
+          "structure": "\"/assets/js/custom.js\" OR [\"/assets/css/style.css\", \"/assets/js/lib.js\"]",
+          "optional": false,
+          "description": "Path or array of paths to JavaScript/CSS assets."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback executed after assets load."
+        }
+      ]
+    },
+    {
+      "name": "run_serially",
+      "module": "frappe",
+      "signature": "frappe.run_serially(tasks: Array<() => Promise<any>>): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise resolving when all async tasks in the queue have completed sequentially.",
+      "docstring": "Executes an array of asynchronous Promise-returning functions in strict sequential order.",
+      "example": "frappe.run_serially([\n    () => frappe.xcall(\"my_app.api.step_one\"),\n    () => frappe.xcall(\"my_app.api.step_two\"),\n    () => frappe.show_alert({ message: __(\"Completed!\"), indicator: \"green\" })\n]);",
+      "parameters": [
+        {
+          "name": "tasks",
+          "type": "Array<() => Promise<any>>",
+          "structure": "[() => fn1(), () => fn2()]",
+          "optional": false,
+          "description": "Array of zero-argument async task functions."
+        }
+      ]
+    }
+  ],
+  "locals": [
+    {
+      "name": "locals",
+      "module": "locals",
+      "signature": "locals[DocType: string][docname: string] -> object",
+      "returnType": "object",
+      "returnDescription": "In-memory document or child row object with current field values.",
+      "docstring": "Global client-side document store in Frappe. Contains in-memory representations of all loaded parent documents and child table rows indexed by DocType name (`cdt`) and Document Name / row ID (`cdn`). In child table triggers, `locals[cdt][cdn]` retrieves the exact row being modified.",
+      "example": "// Inside child table event trigger in client script:\nfrappe.ui.form.on(\"Sales Order Item\", {\n    rate(frm, cdt, cdn) {\n        // 1. Fetch current child table row from locals:\n        const row = locals[cdt][cdn];\n        \n        // 2. Calculate row amount:\n        const amount = (row.qty || 0) * (row.rate || 0);\n        \n        // 3. Update field using frappe.model.set_value:\n        frappe.model.set_value(cdt, cdn, \"amount\", amount);\n    },\n    qty(frm, cdt, cdn) {\n        const item = locals[cdt][cdn];\n        if (item.qty < 0) {\n            frappe.msgprint(__(\"Quantity cannot be negative\"));\n            frappe.model.set_value(cdt, cdn, \"qty\", 0);\n        }\n    }\n});",
+      "parameters": [
+        {
+          "name": "cdt",
+          "type": "string",
+          "structure": "\"Sales Order Item\"",
+          "optional": false,
+          "description": "Child DocType name string."
+        },
+        {
+          "name": "cdn",
+          "type": "string",
+          "structure": "\"row-001\" OR doc.name",
+          "optional": false,
+          "description": "Child Document Name / row identifier string."
+        }
+      ]
+    }
+  ],
+  "frappe.globals": [
+    {
+      "name": "cur_frm",
+      "module": "frappe.globals",
+      "signature": "cur_frm: frappe.ui.form.Form",
+      "returnType": "frappe.ui.form.Form",
+      "returnDescription": "Active Form controller instance.",
+      "docstring": "Global reference to the currently open Form controller instance in the Desk. Provides access to `cur_frm.doc`, `cur_frm.set_value()`, `cur_frm.refresh_field()`, and form methods.",
+      "example": "cur_frm.set_value(\"status\", \"Closed\");\ncur_frm.refresh_field(\"items\");",
+      "parameters": []
+    },
+    {
+      "name": "cur_dialog",
+      "module": "frappe.globals",
+      "signature": "cur_dialog: frappe.ui.Dialog",
+      "returnType": "frappe.ui.Dialog",
+      "returnDescription": "Active Dialog controller instance or null.",
+      "docstring": "Global reference to the currently active open Dialog popup modal.",
+      "example": "if (cur_dialog) {\n    cur_dialog.hide();\n}",
+      "parameters": []
+    },
+    {
+      "name": "cur_page",
+      "module": "frappe.globals",
+      "signature": "cur_page: object",
+      "returnType": "object",
+      "returnDescription": "Active Page controller instance.",
+      "docstring": "Global reference to the currently active desk Page instance.",
+      "example": "cur_page.main.set_title(__(\"Analytics Dashboard\"));",
+      "parameters": []
+    },
+    {
+      "name": "cur_list",
+      "module": "frappe.globals",
+      "signature": "cur_list: frappe.views.ListView",
+      "returnType": "frappe.views.ListView",
+      "returnDescription": "Active ListView controller instance.",
+      "docstring": "Global reference to the currently open ListView controller instance.",
+      "example": "cur_list.refresh();\nconst selected = cur_list.get_checked_items();",
+      "parameters": []
+    },
+    {
+      "name": "frappe.route_options",
+      "module": "frappe.globals",
+      "signature": "frappe.route_options: object",
+      "returnType": "object",
+      "returnDescription": "Key-value dictionary of filter parameters for target route.",
+      "docstring": "Dictionary used to pass parameters and pre-set filter values when navigating between views via `frappe.set_route()`.",
+      "example": "// Pre-filter Customer list to Show only active customers:\nfrappe.route_options = {\n    \"disabled\": 0,\n    \"customer_group\": \"Commercial\"\n};\nfrappe.set_route(\"List\", \"Customer\");",
+      "parameters": []
+    },
+    {
+      "name": "frappe.session",
+      "module": "frappe.globals",
+      "signature": "frappe.session.user: string",
+      "returnType": "object",
+      "returnDescription": "Session information object.",
+      "docstring": "Contains user session data including `frappe.session.user` (email/username of logged in user) and `frappe.session.user_fullname`.",
+      "example": "const currentUser = frappe.session.user;\nconsole.log(\"Logged in as:\", currentUser);",
+      "parameters": []
+    }
+  ],
+  "frappe.model": [
+    {
+      "name": "get_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.get_doc(doctype: string, name: string): object",
+      "returnType": "object",
+      "returnDescription": "Document or child table row object from local memory store (`locals[doctype][name]`).",
+      "docstring": "Retrieves a document or child row object directly from the in-memory client `locals` store.",
+      "example": "const itemRow = frappe.model.get_doc(cdt, cdn);\nconsole.log(itemRow.item_code, itemRow.rate);",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Sales Order Item\"",
+          "optional": false,
+          "description": "DocType name string (or `cdt`)."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "structure": "\"row-001\" OR docname",
+          "optional": false,
+          "description": "Unique record name identifier (or `cdn`)."
+        }
+      ]
+    },
+    {
+      "name": "get_value",
+      "module": "frappe.model",
+      "signature": "frappe.model.get_value(doctype: string, name: string, fieldname: string) -> any",
+      "returnType": "any",
+      "returnDescription": "Field value from client in-memory `locals` cache.",
+      "docstring": "Retrieves field value from client in-memory cache (frappe.locals).",
+      "example": "const status = frappe.model.get_value(\"Employee\", \"EMP-001\", \"status\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "DocType name."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "structure": "\"EMP-001\"",
+          "optional": false,
+          "description": "Record name ID."
+        },
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"status\"",
+          "optional": false,
+          "description": "Field name to read."
+        }
+      ]
+    },
+    {
+      "name": "set_value",
+      "module": "frappe.model",
+      "signature": "frappe.model.set_value(cdt: string, cdn: string, fieldname: string | object, value?: any): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise that resolves once client scripts, formulas, and child table UI have recalculated.",
+      "docstring": "Updates a field value on a child table row or memory document, triggering all client-side event handlers and formula recalculations. Always use `frappe.model.set_value` inside child table triggers instead of setting `row.qty = 5` directly.",
+      "example": "frappe.ui.form.on(\"Sales Order Item\", {\n    qty(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        // Calculate amount and update field with event trigger:\n        const total_amount = (row.qty || 0) * (row.rate || 0);\n        frappe.model.set_value(cdt, cdn, \"amount\", total_amount);\n    }\n});",
+      "parameters": [
+        {
+          "name": "cdt",
+          "type": "string",
+          "structure": "\"Sales Order Item\"",
+          "optional": false,
+          "description": "Child DocType name (cdt)."
+        },
+        {
+          "name": "cdn",
+          "type": "string",
+          "structure": "\"row-001\"",
+          "optional": false,
+          "description": "Unique Child Document Name / row ID (cdn)."
+        },
+        {
+          "name": "fieldname",
+          "type": "string | object",
+          "structure": "\"amount\" OR { \"amount\": 500, \"discount\": 10 }",
+          "optional": false,
+          "description": "Fieldname string OR dictionary of multiple field key-value pairs."
+        },
+        {
+          "name": "value",
+          "type": "any",
+          "structure": "500",
+          "optional": true,
+          "description": "New field value to assign (omit if fieldname is an object)."
+        }
+      ]
+    },
+    {
+      "name": "add_child",
+      "module": "frappe.model",
+      "signature": "frappe.model.add_child(parent_doc: object, child_doctype: string, parentfield: string, idx?: number): object",
+      "returnType": "object",
+      "returnDescription": "Newly created child table row object added to `locals` and `parent_doc`.",
+      "docstring": "Creates and adds a new child row into a parent document's child table array and registers it in `locals`.",
+      "example": "// Add a new row to items child table:\nconst newRow = frappe.model.add_child(frm.doc, \"Sales Order Item\", \"items\");\nnewRow.item_code = \"ITEM-001\";\nnewRow.qty = 2;\nnewRow.rate = 150;\nfrm.refresh_field(\"items\");",
+      "parameters": [
+        {
+          "name": "parent_doc",
+          "type": "object",
+          "structure": "frm.doc",
+          "optional": false,
+          "description": "Parent document object (typically `frm.doc`)."
+        },
+        {
+          "name": "child_doctype",
+          "type": "string",
+          "structure": "\"Sales Order Item\"",
+          "optional": false,
+          "description": "Child DocType schema name."
+        },
+        {
+          "name": "parentfield",
+          "type": "string",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "Table fieldname on parent DocType."
+        },
+        {
+          "name": "idx",
+          "type": "number",
+          "structure": "1",
+          "optional": true,
+          "description": "Optional 1-based index position in child table."
+        }
+      ]
+    },
+    {
+      "name": "clear_table",
+      "module": "frappe.model",
+      "signature": "frappe.model.clear_table(parent_doc: object, parentfield: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Clears all child rows in a document's child table and removes them from memory `locals`.",
+      "example": "frappe.model.clear_table(frm.doc, \"items\");\nfrm.refresh_field(\"items\");",
+      "parameters": [
+        {
+          "name": "parent_doc",
+          "type": "object",
+          "structure": "frm.doc",
+          "optional": false,
+          "description": "Parent document object."
+        },
+        {
+          "name": "parentfield",
+          "type": "string",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "Fieldname of the child table."
+        }
+      ]
+    },
+    {
+      "name": "get_children",
+      "module": "frappe.model",
+      "signature": "frappe.model.get_children(parent_doc: object, parentfield: string): object[]",
+      "returnType": "object[]",
+      "returnDescription": "Array of child table row objects.",
+      "docstring": "Returns all child table row objects belonging to a parent document's table field.",
+      "example": "const items = frappe.model.get_children(frm.doc, \"items\");\nitems.forEach(item => {\n    console.log(item.item_code, item.qty);\n});",
+      "parameters": [
+        {
+          "name": "parent_doc",
+          "type": "object",
+          "structure": "frm.doc",
+          "optional": false,
+          "description": "Parent document object."
+        },
+        {
+          "name": "parentfield",
+          "type": "string",
+          "structure": "\"items\"",
+          "optional": false,
+          "description": "Child table fieldname."
+        }
+      ]
+    },
+    {
+      "name": "delete_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.delete_doc(doctype: string, docname: string, callback?: () => void): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Deletes a document from the server database and clears it from `locals`.",
+      "example": "frappe.model.delete_doc(\"Task\", \"TASK-0001\", function() {\n    frappe.show_alert({ message: __(\"Task Deleted\"), indicator: \"green\" });\n});",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Task\"",
+          "optional": false,
+          "description": "DocType name."
+        },
+        {
+          "name": "docname",
+          "type": "string",
+          "structure": "\"TASK-0001\"",
+          "optional": false,
+          "description": "Document name identifier to delete."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback executed after deletion completes."
+        }
+      ]
+    },
+    {
+      "name": "sync",
+      "module": "frappe.model",
+      "signature": "frappe.model.sync(doc: object | object[]): object[]",
+      "returnType": "object[]",
+      "returnDescription": "Array of synchronized document references in `locals`.",
+      "docstring": "Syncs raw document data into the client-side `locals` store.",
+      "example": "frappe.model.sync(response.message);",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object | object[]",
+          "structure": "{ doctype: \"Customer\", name: \"CUST-001\" }",
+          "optional": false,
+          "description": "Document dictionary or list of documents to store."
+        }
+      ]
+    },
+    {
+      "name": "with_doctype",
+      "module": "frappe.model",
+      "signature": "frappe.model.with_doctype(doctype: string, callback: () => void): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Ensures DocType metadata is loaded in memory before executing callback.",
+      "example": "frappe.model.with_doctype(\"Sales Invoice\", function() {\n    const meta = frappe.get_meta(\"Sales Invoice\");\n    console.log(\"Fields count:\", meta.fields.length);\n});",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "DocType name to load metadata for."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": false,
+          "description": "Callback executed when metadata is ready in client memory."
+        }
+      ]
+    },
+    {
+      "name": "with_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.with_doc(doctype: string, docname: string, callback: () => void): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Ensures target document is loaded in `locals` (fetching from server if necessary) before running callback.",
+      "example": "frappe.model.with_doc(\"Company\", \"My Company Ltd\", function() {\n    const company = frappe.model.get_doc(\"Company\", \"My Company Ltd\");\n    console.log(\"Default currency:\", company.default_currency);\n});",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Company\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "docname",
+          "type": "string",
+          "structure": "\"My Company Ltd\"",
+          "optional": false,
+          "description": "Document name ID."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": false,
+          "description": "Callback executed with document loaded."
+        }
+      ]
+    },
+    {
+      "name": "copy_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.copy_doc(doc: object, from_amend?: boolean): object",
+      "returnType": "object",
+      "returnDescription": "Cloned new document object stored in `locals` with temporary name `New DocType 1`.",
+      "docstring": "Creates an in-memory clone of a document with cleared submission fields (`docstatus = 0`, `amended_from`, etc.).",
+      "example": "const newDoc = frappe.model.copy_doc(frm.doc);\nfrappe.set_route(\"Form\", newDoc.doctype, newDoc.name);",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "structure": "frm.doc",
+          "optional": false,
+          "description": "Source document object to duplicate."
+        },
+        {
+          "name": "from_amend",
+          "type": "boolean",
+          "optional": true,
+          "description": "True if copying for an amendment."
+        }
+      ]
+    },
+    {
+      "name": "open_mapped_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.open_mapped_doc(opts: object): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise resolving after mapped document is created and opened.",
+      "docstring": "Calls a backend document mapping function and navigates to the newly mapped form.",
+      "example": "frappe.model.open_mapped_doc({\n    method: \"erpnext.selling.doctype.sales_order.sales_order.make_delivery_note\",\n    frm: cur_frm\n});",
+      "parameters": [
+        {
+          "name": "opts",
+          "type": "object",
+          "structure": "{\n    method: \"app.doctype.make_target_doc\",\n    frm: frm\n}",
+          "optional": false,
+          "description": "Options containing backend mapper `method` and source `frm`."
+        }
+      ]
+    },
+    {
+      "name": "map_current_doc",
+      "module": "frappe.model",
+      "signature": "frappe.model.map_current_doc(opts: object): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise resolving after fields are mapped into the current form.",
+      "docstring": "Maps fields and child tables from another document directly into the currently active open form.",
+      "example": "frappe.model.map_current_doc({\n    method: \"erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_receipt\",\n    source_name: \"PO-2026-001\",\n    target_doc: frm.doc\n});",
+      "parameters": [
+        {
+          "name": "opts",
+          "type": "object",
+          "structure": "{\n    method: \"app.doctype.make_target\",\n    source_name: \"DOC-001\",\n    target_doc: frm.doc\n}",
+          "optional": false,
+          "description": "Mapper configuration object."
+        }
+      ]
+    },
+    {
+      "name": "is_submittable",
+      "module": "frappe.model",
+      "signature": "frappe.model.is_submittable(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if DocType has `is_submittable: 1` enabled.",
+      "docstring": "Checks if the specified DocType supports submission and cancellation workflows.",
+      "example": "const submittable = frappe.model.is_submittable(\"Sales Invoice\"); // true",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "is_single",
+      "module": "frappe.model",
+      "signature": "frappe.model.is_single(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if DocType is a Single type.",
+      "docstring": "Checks if the specified DocType is a Single document (e.g. System Settings, Global Defaults).",
+      "example": "if (frappe.model.is_single(\"System Settings\")) {\n    console.log(\"This is a Single DocType\");\n}",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"System Settings\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "is_tree",
+      "module": "frappe.model",
+      "signature": "frappe.model.is_tree(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if DocType is a hierarchical Tree DocType.",
+      "docstring": "Checks if the specified DocType is organized as a Tree structure (e.g. Account, Cost Center).",
+      "example": "const isTree = frappe.model.is_tree(\"Account\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Account\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "can_create",
+      "module": "frappe.model",
+      "signature": "frappe.model.can_create(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if current user has Create permission for this DocType.",
+      "docstring": "Checks if the logged in user has permission to create new records of this DocType.",
+      "example": "if (frappe.model.can_create(\"Quotation\")) {\n    frm.add_custom_button(__(\"Create Quotation\"), () => { ... });\n}",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Quotation\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "can_read",
+      "module": "frappe.model",
+      "signature": "frappe.model.can_read(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if current user has Read permission.",
+      "docstring": "Checks if the logged in user has read permissions for the specified DocType.",
+      "example": "const canRead = frappe.model.can_read(\"Salary Slip\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Salary Slip\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "can_write",
+      "module": "frappe.model",
+      "signature": "frappe.model.can_write(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if current user has Write permission.",
+      "docstring": "Checks if the logged in user has edit/write permissions for the specified DocType.",
+      "example": "const canEdit = frappe.model.can_write(\"Customer\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "can_delete",
+      "module": "frappe.model",
+      "signature": "frappe.model.can_delete(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if current user has Delete permission.",
+      "docstring": "Checks if the logged in user has delete permissions for the specified DocType.",
+      "example": "const canDelete = frappe.model.can_delete(\"Task\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Task\"",
+          "optional": false,
+          "description": "DocType name."
+        }
+      ]
+    },
+    {
+      "name": "can_cancel",
+      "module": "frappe.model",
+      "signature": "frappe.model.can_cancel(doctype: string): boolean",
+      "returnType": "boolean",
+      "returnDescription": "True if current user has Cancel permission.",
+      "docstring": "Checks if the logged in user has permission to cancel submitted documents for this DocType.",
+      "example": "const canCancel = frappe.model.can_cancel(\"Sales Invoice\");",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "DocType name."
         }
       ]
     }
@@ -330,24 +956,24 @@
     {
       "name": "on",
       "module": "frappe.web_form",
-      "signature": "frappe.web_form.on(event: string, handler: Function)",
+      "signature": "frappe.web_form.on(event: string, callback: () => void)",
       "returnType": "void",
-      "returnDescription": "None.",
-      "docstring": "Registers an event listener or field change handler on a website public Web Form.",
-      "example": "frappe.web_form.on(\"onload\", () => {\n    frappe.web_form.set_value(\"posting_date\", frappe.datetime.nowdate());\n});\nfrappe.web_form.on(\"department\", (field, val) => {\n    console.log(\"Department changed to:\", val);\n});",
+      "returnDescription": "Registers web form event handler.",
+      "docstring": "Listens to Portal Web Form lifecycle events (`ready`, `before_load`, `after_load`, `validate`, `after_save`).",
+      "example": "frappe.web_form.on('ready', () => {\n    frappe.web_form.set_value('date', frappe.datetime.nowdate());\n});",
       "parameters": [
         {
           "name": "event",
           "type": "string",
-          "structure": "\"onload\" OR \"after_save\" OR \"fieldname\"",
+          "structure": "\"ready\" | \"validate\" | \"after_save\"",
           "optional": false,
-          "description": "Event name ('onload', 'after_save', 'validate') OR fieldname string."
+          "description": "Web form event name."
         },
         {
-          "name": "handler",
-          "type": "Function",
+          "name": "callback",
+          "type": "function",
           "optional": false,
-          "description": "Event callback handler."
+          "description": "Handler callback function."
         }
       ]
     },
@@ -357,8 +983,8 @@
       "signature": "frappe.web_form.set_value(fieldname: string, value: any)",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Sets the value of a field on the public Web Form and updates the input control.",
-      "example": "frappe.web_form.set_value(\"status\", \"Open\");",
+      "docstring": "Sets field value inside a Portal Web Form.",
+      "example": "frappe.web_form.set_value('email', 'contact@example.com');",
       "parameters": [
         {
           "name": "fieldname",
@@ -370,7 +996,7 @@
           "name": "value",
           "type": "any",
           "optional": false,
-          "description": "New value."
+          "description": "Field value."
         }
       ]
     },
@@ -379,15 +1005,15 @@
       "module": "frappe.web_form",
       "signature": "frappe.web_form.get_value(fieldname: string) -> any",
       "returnType": "any",
-      "returnDescription": "Current value of field on Web Form.",
-      "docstring": "Retrieves the current value entered in a Web Form field.",
-      "example": "const email = frappe.web_form.get_value(\"email_id\");",
+      "returnDescription": "Current input value in web form.",
+      "docstring": "Reads input value from Portal Web Form.",
+      "example": "const email = frappe.web_form.get_value('email');",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string",
           "optional": false,
-          "description": "Fieldname to read."
+          "description": "Fieldname."
         }
       ]
     },
@@ -397,27 +1023,27 @@
       "signature": "frappe.web_form.set_df_property(fieldname: string, property: string, value: any)",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Dynamically modifies a field property on the Web Form ('read_only', 'reqd', 'hidden').",
-      "example": "frappe.web_form.set_df_property(\"passport_no\", \"reqd\", 1);",
+      "docstring": "Dynamically sets field property (reqd, hidden, read_only) in Portal Web Form.",
+      "example": "frappe.web_form.set_df_property('phone', 'reqd', 1);",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string",
           "optional": false,
-          "description": "Fieldname."
+          "description": "Target fieldname."
         },
         {
           "name": "property",
           "type": "string",
-          "structure": "\"reqd\" | \"read_only\" | \"hidden\"",
+          "structure": "\"reqd\" | \"hidden\" | \"read_only\"",
           "optional": false,
-          "description": "Property name."
+          "description": "Property identifier."
         },
         {
           "name": "value",
           "type": "any",
           "optional": false,
-          "description": "Value (1 or 0)."
+          "description": "Property value (0 or 1)."
         }
       ]
     }
@@ -428,40 +1054,40 @@
       "module": "frappe.listview_settings",
       "signature": "add_fields: string[]",
       "returnType": "string[]",
-      "returnDescription": "Array of field names.",
-      "docstring": "List of additional database fields to fetch for each row in the ListView.",
-      "example": "frappe.listview_settings['Sales Invoice'] = {\n    add_fields: ['status', 'grand_total', 'customer_name']\n};",
+      "returnDescription": "Array of database column names to fetch.",
+      "docstring": "Specifies extra fields to fetch from the database when querying the DocType ListView.",
+      "example": "frappe.listview_settings['Sales Order'] = {\n    add_fields: ['grand_total', 'customer_name', 'status', 'delivery_date']\n};",
       "parameters": []
     },
     {
       "name": "get_indicator",
       "module": "frappe.listview_settings",
-      "signature": "get_indicator(doc: object) -> [label: string, color: string, filter: string]",
-      "returnType": "Array<string>",
-      "returnDescription": "[label, color, filter_condition]",
-      "docstring": "Returns a tuple [Label, Color, FilterCondition] to render a colored status indicator pill in ListView.",
-      "example": "get_indicator(doc) {\n    if (doc.status === \"Paid\") {\n        return [__(\"Paid\"), \"green\", \"status,=,Paid\"];\n    }\n}",
+      "signature": "get_indicator(doc: object) -> [string, string, string]",
+      "returnType": "[string, string, string]",
+      "returnDescription": "Array of [label, color, filter_expression].",
+      "docstring": "Calculates the status badge indicator color and label for each row in the ListView.",
+      "example": "get_indicator(doc) {\n    if (doc.status === 'Paid') {\n        return [__('Paid'), 'green', 'status,=,Paid'];\n    } else if (doc.status === 'Overdue') {\n        return [__('Overdue'), 'red', 'status,=,Overdue'];\n    }\n}",
       "parameters": [
         {
           "name": "doc",
           "type": "object",
           "optional": false,
-          "description": "Current row document object."
+          "description": "Row record object."
         }
       ]
     },
     {
       "name": "onload",
       "module": "frappe.listview_settings",
-      "signature": "onload(listview: ListView)",
+      "signature": "onload(listview: object)",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Lifecycle hook triggered once when the ListView finishes loading.",
-      "example": "onload(listview) {\n    listview.page.add_inner_button(__(\"Export XML\"), () => export_xml());\n}",
+      "docstring": "Hook triggered when ListView renders for this DocType. Used to add custom action buttons or custom filter bars.",
+      "example": "onload(listview) {\n    listview.page.add_inner_button(__('Bulk Approve'), () => {\n        const checked = listview.get_checked_items();\n        console.log(checked);\n    });\n}",
       "parameters": [
         {
           "name": "listview",
-          "type": "ListView",
+          "type": "object",
           "optional": false,
           "description": "ListView controller instance."
         }
@@ -472,30 +1098,30 @@
     {
       "name": "get_value",
       "module": "frappe.db",
-      "signature": "frappe.db.get_value(doctype: string, filters: string | object, fieldname: string | string[]) -> Promise<{ message: object }>",
-      "returnType": "Promise<{ message: object }>",
-      "returnDescription": "Promise resolving with the requested field values dictionary.",
-      "docstring": "Fetches field values for a record from the server database without reloading the page.",
-      "example": "frappe.db.get_value(\"Employee\", \"EMP-001\", [\"employee_name\", \"department\"]).then(r => console.log(r.message));",
+      "signature": "frappe.db.get_value(doctype: string, filters: string | object, fieldname: string | string[]): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise resolving with field value or object containing requested field values in `r.message`.",
+      "docstring": "Queries the database for a single field or multiple fields from the client.",
+      "example": "frappe.db.get_value(\"Customer\", \"CUST-001\", [\"customer_name\", \"territory\"])\n    .then(r => {\n        if (r.message) {\n            console.log(r.message.customer_name, r.message.territory);\n        }\n    });",
       "parameters": [
         {
           "name": "doctype",
           "type": "string",
-          "structure": "\"Employee\"",
+          "structure": "\"Customer\"",
           "optional": false,
-          "description": "Target DocType name."
+          "description": "DocType name."
         },
         {
           "name": "filters",
           "type": "string | object",
-          "structure": "\"EMP-001\"",
+          "structure": "\"CUST-001\" OR { status: \"Active\" }",
           "optional": false,
-          "description": "Document ID name or filter object."
+          "description": "Document name or filter dictionary."
         },
         {
           "name": "fieldname",
           "type": "string | string[]",
-          "structure": "\"department\" OR [\"department\", \"status\"]",
+          "structure": "\"territory\" OR [\"customer_name\", \"territory\"]",
           "optional": false,
           "description": "Field name or array of field names to fetch."
         }
@@ -504,23 +1130,50 @@
     {
       "name": "get_doc",
       "module": "frappe.db",
-      "signature": "frappe.db.get_doc(doctype: string, name: string) -> Promise<object>",
+      "signature": "frappe.db.get_doc(doctype: string, name: string): Promise<object>",
       "returnType": "Promise<object>",
-      "returnDescription": "Promise resolving with full document object.",
-      "docstring": "Fetches a full document object with child tables from the server.",
-      "example": "frappe.db.get_doc(\"Employee\", \"EMP-001\").then(doc => console.log(doc));",
+      "returnDescription": "Promise resolving with full document object including child tables.",
+      "docstring": "Fetches a full document object with all child table rows from the server.",
+      "example": "frappe.db.get_doc(\"Employee\", \"EMP-001\").then(doc => {\n    console.log(\"Employee:\", doc.employee_name, doc.department);\n});",
       "parameters": [
         {
           "name": "doctype",
           "type": "string",
+          "structure": "\"Employee\"",
           "optional": false,
           "description": "DocType name."
         },
         {
           "name": "name",
           "type": "string",
+          "structure": "\"EMP-001\"",
           "optional": false,
-          "description": "Document ID."
+          "description": "Document name ID."
+        }
+      ]
+    },
+    {
+      "name": "get_list",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_list(doctype: string, args?: object): Promise<object[]>",
+      "returnType": "Promise<object[]>",
+      "returnDescription": "Promise resolving with array of matching record dictionaries.",
+      "docstring": "Fetches a list of records from the database respecting user read permissions.",
+      "example": "frappe.db.get_list(\"Customer\", {\n    fields: [\"name\", \"customer_name\", \"territory\"],\n    filters: { disabled: 0 },\n    limit: 20\n}).then(records => {\n    console.log(\"Active Customers:\", records);\n});",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "args",
+          "type": "object",
+          "structure": "{\n    fields: [\"name\", \"title\"],\n    filters: { status: \"Open\" },\n    limit: 10\n}",
+          "optional": true,
+          "description": "Query parameters dictionary (fields, filters, order_by, limit)."
         }
       ]
     },
@@ -529,8 +1182,8 @@
       "module": "frappe.db",
       "signature": "frappe.db.set_value(doctype: string, name: string, fieldname: string | object, value?: any): Promise<any>",
       "returnType": "Promise<any>",
-      "returnDescription": "Promise resolving after database update.",
-      "docstring": "Directly updates a field or fields on a server database record from client-side JavaScript without loading the document form.",
+      "returnDescription": "Promise resolving after database update completes.",
+      "docstring": "Directly updates a field or fields on a server database record from client-side JavaScript without opening the document form.",
       "example": "frappe.db.set_value(\"Employee\", \"EMP-001\", \"status\", \"Left\");",
       "parameters": [
         {
@@ -570,7 +1223,7 @@
       "returnType": "Promise<number>",
       "returnDescription": "Promise resolving with total record count number.",
       "docstring": "Counts matching records in the database table.",
-      "example": "frappe.db.count(\"Employee\", { status: \"Active\" }).then(count => console.log(count));",
+      "example": "frappe.db.count(\"Employee\", { status: \"Active\" }).then(count => console.log(\"Active count:\", count));",
       "parameters": [
         {
           "name": "doctype",
@@ -587,23 +1240,66 @@
           "description": "Optional filter criteria object."
         }
       ]
+    },
+    {
+      "name": "exists",
+      "module": "frappe.db",
+      "signature": "frappe.db.exists(doctype: string, name: string | object): Promise<boolean>",
+      "returnType": "Promise<boolean>",
+      "returnDescription": "Promise resolving with true if record exists, false otherwise.",
+      "docstring": "Checks whether a record exists in the database table matching the name or filter criteria.",
+      "example": "frappe.db.exists(\"User\", \"admin@example.com\").then(exists => {\n    if (exists) console.log(\"User already registered\");\n});",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "string",
+          "structure": "\"User\"",
+          "optional": false,
+          "description": "Target DocType name."
+        },
+        {
+          "name": "name",
+          "type": "string | object",
+          "structure": "\"admin@example.com\" OR { email: \"user@example.com\" }",
+          "optional": false,
+          "description": "Document name ID string or filter criteria dictionary."
+        }
+      ]
+    },
+    {
+      "name": "insert",
+      "module": "frappe.db",
+      "signature": "frappe.db.insert(doc: object): Promise<object>",
+      "returnType": "Promise<object>",
+      "returnDescription": "Promise resolving with the newly created document object.",
+      "docstring": "Creates and inserts a new document directly into the database from client JavaScript.",
+      "example": "frappe.db.insert({\n    doctype: \"ToDo\",\n    description: \"Review Sales Order\",\n    allocated_to: frappe.session.user\n}).then(doc => {\n    frappe.show_alert({ message: __(\"ToDo {0} created\", [doc.name]), indicator: \"green\" });\n});",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "object",
+          "structure": "{\n    doctype: \"ToDo\",\n    description: \"Task content\"\n}",
+          "optional": false,
+          "description": "Document dictionary including `doctype` and mandatory fields."
+        }
+      ]
     }
   ],
   "frappe.ui.Dialog": [
     {
       "name": "show",
       "module": "frappe.ui.Dialog",
-      "signature": "dialog.show()",
+      "signature": "dialog.show(): void",
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Opens and renders the dialog popup modal on screen.",
-      "example": "const d = new frappe.ui.Dialog({ title: __(\"Title\"), fields: [...] });\nd.show();",
+      "example": "const d = new frappe.ui.Dialog({\n    title: __(\"Enter Reason\"),\n    fields: [{ fieldname: \"reason\", fieldtype: \"Data\", label: \"Reason\", reqd: 1 }],\n    primary_action_label: __(\"Submit\"),\n    primary_action(values) {\n        console.log(values);\n        d.hide();\n    }\n});\nd.show();",
       "parameters": []
     },
     {
       "name": "hide",
       "module": "frappe.ui.Dialog",
-      "signature": "dialog.hide()",
+      "signature": "dialog.hide(): void",
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Closes and hides the dialog popup modal.",
@@ -613,17 +1309,17 @@
     {
       "name": "get_values",
       "module": "frappe.ui.Dialog",
-      "signature": "dialog.get_values() -> object | null",
+      "signature": "dialog.get_values(): object | null",
       "returnType": "object | null",
       "returnDescription": "Dictionary of field values, or null if mandatory validation fails.",
       "docstring": "Validates inputs and returns all user-entered field values as a key-value object.",
-      "example": "const values = d.get_values();",
+      "example": "const values = d.get_values();\nif (values) {\n    console.log(\"User entered:\", values.reason);\n}",
       "parameters": []
     },
     {
       "name": "set_value",
       "module": "frappe.ui.Dialog",
-      "signature": "dialog.set_value(fieldname: string, value: any)",
+      "signature": "dialog.set_value(fieldname: string, value: any): void",
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Sets the value of a specific field inside the dialog input form.",
@@ -632,14 +1328,87 @@
         {
           "name": "fieldname",
           "type": "string",
+          "structure": "\"reason\"",
           "optional": false,
           "description": "Field identifier in dialog."
         },
         {
           "name": "value",
           "type": "any",
+          "structure": "\"Reason text\"",
           "optional": false,
           "description": "Value to set."
+        }
+      ]
+    },
+    {
+      "name": "set_values",
+      "module": "frappe.ui.Dialog",
+      "signature": "dialog.set_values(values: object): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Sets multiple field values simultaneously inside the dialog input form.",
+      "example": "d.set_values({\n    reason: \"Hardware upgrade\",\n    scheduled_date: frappe.datetime.nowdate()\n});",
+      "parameters": [
+        {
+          "name": "values",
+          "type": "object",
+          "structure": "{ reason: \"Text\", priority: \"High\" }",
+          "optional": false,
+          "description": "Key-value dictionary of field values."
+        }
+      ]
+    },
+    {
+      "name": "set_primary_action",
+      "module": "frappe.ui.Dialog",
+      "signature": "dialog.set_primary_action(label: string, action: () => void): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Sets or updates the primary button action handler and button label on the dialog modal.",
+      "example": "d.set_primary_action(__(\"Confirm\"), function() {\n    const values = d.get_values();\n    if (values) {\n        // Handle submission\n        d.hide();\n    }\n});",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Submit\"",
+          "optional": false,
+          "description": "Button display label text."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "structure": "() => { ... }",
+          "optional": false,
+          "description": "Handler callback executed when primary button is clicked."
+        }
+      ]
+    },
+    {
+      "name": "clear",
+      "module": "frappe.ui.Dialog",
+      "signature": "dialog.clear(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Clears and resets all input field values in the dialog to their default empty states.",
+      "example": "d.clear();",
+      "parameters": []
+    },
+    {
+      "name": "get_field",
+      "module": "frappe.ui.Dialog",
+      "signature": "dialog.get_field(fieldname: string): object",
+      "returnType": "object",
+      "returnDescription": "Control object for the dialog field.",
+      "docstring": "Returns the Frappe control object for a field inside the dialog (allowing `.df`, `.$wrapper`, `.toggle()`).",
+      "example": "const field = d.get_field(\"customer\");\nfield.df.reqd = 1;\nfield.refresh();",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"customer\"",
+          "optional": false,
+          "description": "Field identifier in dialog."
         }
       ]
     }
@@ -653,6 +1422,26 @@
       "returnDescription": "Today's date in 'YYYY-MM-DD' format.",
       "docstring": "Returns today's date formatted as a 'YYYY-MM-DD' string.",
       "example": "const today = frappe.datetime.nowdate();",
+      "parameters": []
+    },
+    {
+      "name": "now_datetime",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.now_datetime() -> string",
+      "returnType": "string",
+      "returnDescription": "Current timestamp in 'YYYY-MM-DD HH:mm:ss' format.",
+      "docstring": "Returns current system date and time formatted string.",
+      "example": "const now = frappe.datetime.now_datetime();",
+      "parameters": []
+    },
+    {
+      "name": "now_time",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.now_time() -> string",
+      "returnType": "string",
+      "returnDescription": "Current time in 'HH:mm:ss' format.",
+      "docstring": "Returns current system time string.",
+      "example": "const timeStr = frappe.datetime.now_time();",
       "parameters": []
     },
     {
@@ -674,8 +1463,102 @@
         {
           "name": "days",
           "type": "number",
+          "structure": "7",
           "optional": false,
-          "description": "Days to add or subtract."
+          "description": "Days to add (positive) or subtract (negative)."
+        }
+      ]
+    },
+    {
+      "name": "add_months",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.add_months(date: string, months: number) -> string",
+      "returnType": "string",
+      "returnDescription": "Calculated date string in 'YYYY-MM-DD' format.",
+      "docstring": "Adds or subtracts N calendar months from a date string.",
+      "example": "const renewalDate = frappe.datetime.add_months(frappe.datetime.nowdate(), 12);",
+      "parameters": [
+        {
+          "name": "date",
+          "type": "string",
+          "structure": "\"2026-01-01\"",
+          "optional": false,
+          "description": "Base date string."
+        },
+        {
+          "name": "months",
+          "type": "number",
+          "structure": "12",
+          "optional": false,
+          "description": "Number of months to add or subtract."
+        }
+      ]
+    },
+    {
+      "name": "get_diff",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.get_diff(d1: string, d2: string) -> number",
+      "returnType": "number",
+      "returnDescription": "Difference in days between d1 and d2 (d1 - d2).",
+      "docstring": "Calculates difference in days between two date strings.",
+      "example": "const daysRemaining = frappe.datetime.get_diff(doc.due_date, frappe.datetime.nowdate());",
+      "parameters": [
+        {
+          "name": "d1",
+          "type": "string",
+          "structure": "\"2026-10-01\"",
+          "optional": false,
+          "description": "First date string."
+        },
+        {
+          "name": "d2",
+          "type": "string",
+          "structure": "\"2026-09-01\"",
+          "optional": false,
+          "description": "Second date string."
+        }
+      ]
+    },
+    {
+      "name": "get_hour_diff",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.get_hour_diff(d1: string, d2: string) -> number",
+      "returnType": "number",
+      "returnDescription": "Difference in fractional hours between timestamps.",
+      "docstring": "Calculates difference in hours between two timestamp strings.",
+      "example": "const hours = frappe.datetime.get_hour_diff(doc.to_time, doc.from_time);",
+      "parameters": [
+        {
+          "name": "d1",
+          "type": "string",
+          "structure": "\"2026-09-05 18:00:00\"",
+          "optional": false,
+          "description": "Later timestamp."
+        },
+        {
+          "name": "d2",
+          "type": "string",
+          "structure": "\"2026-09-05 09:00:00\"",
+          "optional": false,
+          "description": "Earlier timestamp."
+        }
+      ]
+    },
+    {
+      "name": "str_to_user",
+      "module": "frappe.datetime",
+      "signature": "frappe.datetime.str_to_user(val: string) -> string",
+      "returnType": "string",
+      "returnDescription": "Date formatted according to active user's system date format preferences (e.g. 'DD-MM-YYYY' or 'MM/DD/YYYY').",
+      "docstring": "Converts standard ISO date string ('YYYY-MM-DD') into user's preferred display date format.",
+      "example": "const formatted = frappe.datetime.str_to_user(\"2026-09-05\");",
+      "parameters": [
+        {
+          "name": "val",
+          "type": "string",
+          "structure": "\"2026-09-05\"",
+          "optional": false,
+          "description": "Standard ISO date string."
         }
       ]
     },
@@ -684,85 +1567,16 @@
       "module": "frappe.datetime",
       "signature": "frappe.datetime.prettyDate(datetime: string) -> string",
       "returnType": "string",
-      "returnDescription": "Human-friendly relative time (e.g. '2 hours ago').",
+      "returnDescription": "Human-friendly relative time (e.g. '2 hours ago', 'just now').",
       "docstring": "Formats a timestamp into human-readable relative duration.",
       "example": "const ago = frappe.datetime.prettyDate(doc.creation);",
       "parameters": [
         {
           "name": "datetime",
           "type": "string",
+          "structure": "\"2026-09-05 08:30:00\"",
           "optional": false,
           "description": "Timestamp string."
-        }
-      ]
-    }
-  ],
-  "frappe.model": [
-    {
-      "name": "get_value",
-      "module": "frappe.model",
-      "signature": "frappe.model.get_value(doctype: string, name: string, fieldname: string) -> any",
-      "returnType": "any",
-      "returnDescription": "Value from in-memory locals store.",
-      "docstring": "Retrieves field value from client in-memory cache (frappe.locals).",
-      "example": "const status = frappe.model.get_value(\"Employee\", \"EMP-001\", \"status\");",
-      "parameters": [
-        {
-          "name": "doctype",
-          "type": "string",
-          "optional": false,
-          "description": "DocType name."
-        },
-        {
-          "name": "name",
-          "type": "string",
-          "optional": false,
-          "description": "Record name."
-        },
-        {
-          "name": "fieldname",
-          "type": "string",
-          "optional": false,
-          "description": "Field name."
-        }
-      ]
-    },
-    {
-      "name": "set_value",
-      "module": "frappe.model",
-      "signature": "frappe.model.set_value(cdt: string, cdn: string, fieldname: string | object, value?: any): Promise<any>",
-      "returnType": "Promise<any>",
-      "returnDescription": "Promise that resolves once client scripts and formulas have recalculated.",
-      "docstring": "Updates a field value on a child table row or memory document, triggering all client-side event handlers and formula recalculations. Always use `frappe.model.set_value` inside child table triggers instead of setting `row.qty = 5` directly.",
-      "example": "frappe.ui.form.on(\"Sales Order Item\", {\n    qty(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        // Calculate amount and update field with trigger:\n        const total_amount = row.qty * row.rate;\n        frappe.model.set_value(cdt, cdn, \"amount\", total_amount);\n    }\n});",
-      "parameters": [
-        {
-          "name": "cdt",
-          "type": "string",
-          "structure": "\"Sales Order Item\"",
-          "optional": false,
-          "description": "Child DocType name (cdt)."
-        },
-        {
-          "name": "cdn",
-          "type": "string",
-          "structure": "\"row-001\"",
-          "optional": false,
-          "description": "Unique Child Document Name / row ID (cdn)."
-        },
-        {
-          "name": "fieldname",
-          "type": "string | object",
-          "structure": "\"amount\" OR { \"amount\": 500, \"discount\": 10 }",
-          "optional": false,
-          "description": "Fieldname string OR dictionary of multiple field key-value pairs."
-        },
-        {
-          "name": "value",
-          "type": "any",
-          "structure": "500",
-          "optional": true,
-          "description": "New field value to assign."
         }
       ]
     }
@@ -773,7 +1587,7 @@
       "module": "frappe.realtime",
       "signature": "frappe.realtime.on(event: string, callback: (data: any) => void): void",
       "returnType": "void",
-      "returnDescription": "None",
+      "returnDescription": "None.",
       "docstring": "Listens to real-time WebSocket events published from backend Python workers (`frappe.publish_realtime`). Enables live UI updates without refreshing the browser.",
       "example": "// Listen for real-time task completion broadcast from backend worker:\nfrappe.realtime.on(\"import_progress\", function(data) {\n    frappe.show_progress(__(\"Importing Customers\"), data.current, data.total, data.message);\n    if (data.current === data.total) {\n        frappe.show_alert({ message: __(\"Import Finished!\"), indicator: \"green\" });\n        cur_frm.reload_doc();\n    }\n});",
       "parameters": [
@@ -792,6 +1606,55 @@
           "description": "Function executed when WebSocket event payload arrives."
         }
       ]
+    },
+    {
+      "name": "off",
+      "module": "frappe.realtime",
+      "signature": "frappe.realtime.off(event: string, callback?: Function): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Removes a registered WebSocket real-time event listener to prevent duplicate triggers.",
+      "example": "frappe.realtime.off(\"import_progress\");",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "string",
+          "structure": "\"import_progress\"",
+          "optional": false,
+          "description": "Event name identifier to unsubscribe from."
+        },
+        {
+          "name": "callback",
+          "type": "Function",
+          "optional": true,
+          "description": "Specific callback function to unbind."
+        }
+      ]
+    },
+    {
+      "name": "publish",
+      "module": "frappe.realtime",
+      "signature": "frappe.realtime.publish(event: string, message: object): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Publishes a real-time event from the browser to other connected users on the WebSocket channel.",
+      "example": "frappe.realtime.publish(\"typing_indicator\", { user: frappe.session.user });",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "string",
+          "structure": "\"typing_indicator\"",
+          "optional": false,
+          "description": "Event name."
+        },
+        {
+          "name": "message",
+          "type": "object",
+          "structure": "{ status: \"typing\" }",
+          "optional": false,
+          "description": "Data payload dictionary."
+        }
+      ]
     }
   ],
   "frappe.ui.form": [
@@ -802,7 +1665,7 @@
       "returnType": "void",
       "returnDescription": "Registers form event listeners.",
       "docstring": "Main entry point for all Frappe Client Scripts. Registers event listeners for form lifecycle events (`onload`, `refresh`, `validate`, `before_save`, `on_submit`) and field change triggers on parent and child DocTypes.",
-      "example": "// 1. Parent DocType handlers:\nfrappe.ui.form.on(\"Customer\", {\n    refresh(frm) {\n        if (frm.is_new()) {\n            frm.set_intro(__(\"Please fill all required business registration details.\"), \"blue\");\n        }\n    },\n    customer_type(frm) {\n        frm.toggle_reqd(\"tax_id\", frm.doc.customer_type === \"Company\");\n    }\n});\n\n// 2. Child Table handlers:\nfrappe.ui.form.on(\"Sales Order Item\", {\n    items_add(frm, cdt, cdn) {\n        frappe.msgprint(__(\"New item row added!\"));\n    },\n    rate(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        frappe.model.set_value(cdt, cdn, \"amount\", row.qty * row.rate);\n    }\n});",
+      "example": "// 1. Parent DocType handlers:\nfrappe.ui.form.on(\"Customer\", {\n    refresh(frm) {\n        if (frm.is_new()) {\n            frm.set_intro(__(\"Please fill all required business registration details.\"), \"blue\");\n        }\n    },\n    customer_type(frm) {\n        frm.toggle_reqd(\"tax_id\", frm.doc.customer_type === \"Company\");\n    }\n});\n\n// 2. Child Table handlers:\nfrappe.ui.form.on(\"Sales Order Item\", {\n    items_add(frm, cdt, cdn) {\n        frappe.msgprint(__(\"New item row added!\"));\n    },\n    rate(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        frappe.model.set_value(cdt, cdn, \"amount\", (row.qty || 0) * (row.rate || 0));\n    }\n});",
       "parameters": [
         {
           "name": "doctype",
@@ -814,7 +1677,7 @@
         {
           "name": "handlers",
           "type": "object",
-          "structure": "{ refresh(frm) { ... }, validate(frm) { ... } }",
+          "structure": "{\n    refresh(frm) { ... },\n    validate(frm) { ... },\n    field_name(frm) { ... }\n}",
           "optional": false,
           "description": "Object dictionary mapping event names and fieldnames to callback functions."
         }
@@ -847,7 +1710,7 @@
       "returnType": "string[]",
       "returnDescription": "Array of route segments.",
       "docstring": "Returns the current active router path segments as an array.",
-      "example": "const route = frappe.get_route();",
+      "example": "const route = frappe.get_route(); // [\"Form\", \"Customer\", \"CUST-001\"]",
       "parameters": []
     },
     {
@@ -857,7 +1720,7 @@
       "returnType": "string",
       "returnDescription": "Current route URL string.",
       "docstring": "Returns the current active route joined with slashes.",
-      "example": "const path = frappe.get_route_str();",
+      "example": "const path = frappe.get_route_str(); // \"app/customer/CUST-001\"",
       "parameters": []
     }
   ],
@@ -865,7 +1728,7 @@
     {
       "name": "copy_to_clipboard",
       "module": "frappe.utils",
-      "signature": "frappe.utils.copy_to_clipboard(val: string)",
+      "signature": "frappe.utils.copy_to_clipboard(val: string): void",
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Copies text to user's system clipboard and displays a desk notification toast.",
@@ -874,6 +1737,7 @@
         {
           "name": "val",
           "type": "string",
+          "structure": "\"Text to copy\"",
           "optional": false,
           "description": "Text to copy."
         }
@@ -882,7 +1746,7 @@
     {
       "name": "play_sound",
       "module": "frappe.utils",
-      "signature": "frappe.utils.play_sound(soundName: string)",
+      "signature": "frappe.utils.play_sound(soundName: string): void",
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Plays a desk audio alert sound ('submit', 'cancel', 'error', 'click', 'email').",
@@ -909,14 +1773,77 @@
         {
           "name": "doctype",
           "type": "string",
+          "structure": "\"Employee\"",
           "optional": false,
           "description": "DocType name."
         },
         {
           "name": "name",
           "type": "string",
+          "structure": "\"EMP-001\"",
           "optional": false,
           "description": "Document name."
+        }
+      ]
+    },
+    {
+      "name": "get_url",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.get_url(uri?: string) -> string",
+      "returnType": "string",
+      "returnDescription": "Full absolute URL string.",
+      "docstring": "Constructs a full absolute URL for the current site combining protocol, host, and path.",
+      "example": "const url = frappe.utils.get_url(\"/app/customer\");",
+      "parameters": [
+        {
+          "name": "uri",
+          "type": "string",
+          "structure": "\"/app/sales-order\"",
+          "optional": true,
+          "description": "Relative URI path."
+        }
+      ]
+    },
+    {
+      "name": "filter_dict",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.filter_dict(dict: object[], filters: object) -> object[]",
+      "returnType": "object[]",
+      "returnDescription": "Array of matching dictionary items.",
+      "docstring": "Filters an array of dictionary objects matching the key-value criteria in `filters`.",
+      "example": "const active = frappe.utils.filter_dict(users, { enabled: 1 });",
+      "parameters": [
+        {
+          "name": "dict",
+          "type": "object[]",
+          "structure": "[{ id: 1, status: \"Active\" }]",
+          "optional": false,
+          "description": "Array of objects to filter."
+        },
+        {
+          "name": "filters",
+          "type": "object",
+          "structure": "{ status: \"Active\" }",
+          "optional": false,
+          "description": "Filter criteria dictionary."
+        }
+      ]
+    },
+    {
+      "name": "comma_and",
+      "module": "frappe.utils",
+      "signature": "frappe.utils.comma_and(list: string[]) -> string",
+      "returnType": "string",
+      "returnDescription": "Humanized comma-separated string (e.g. 'Apple, Banana and Orange').",
+      "docstring": "Formats a string array into a comma-separated list ending with 'and'.",
+      "example": "const text = frappe.utils.comma_and([\"Admin\", \"Manager\", \"Staff\"]);",
+      "parameters": [
+        {
+          "name": "list",
+          "type": "string[]",
+          "structure": "[\"First\", \"Second\", \"Third\"]",
+          "optional": false,
+          "description": "Array of string items."
         }
       ]
     }

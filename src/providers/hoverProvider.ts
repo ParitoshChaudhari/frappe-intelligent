@@ -139,6 +139,21 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
       const found = nList?.find((item: any) => item.name === word);
       if (found) return found;
     }
+    if (lineText.includes(`frappe.model.${word}`)) {
+      const mList = (jsApis as any)['frappe.model'];
+      const found = mList?.find((item: any) => item.name === word);
+      if (found) return found;
+    }
+    if (word === 'locals' || lineText.includes(`locals[`) || lineText.includes(`locals.`)) {
+      const locList = (jsApis as any)['locals'];
+      const found = locList?.find((item: any) => item.name === 'locals');
+      if (found) return found;
+    }
+    if (lineText.includes(`dialog.${word}`) || lineText.includes(`d.${word}`) || lineText.includes(`cur_dialog.${word}`)) {
+      const dList = (jsApis as any)['frappe.ui.Dialog'];
+      const found = dList?.find((item: any) => item.name === word);
+      if (found) return found;
+    }
 
     if (isServer) {
       for (const group of ['frappe', 'frappe.db', 'frappe.utils', 'frappe.qb', 'frappe.cache', 'frappe.permissions', 'frappe.model.naming', 'frappe.session', 'frappe.local', 'frappe.flags', 'Document']) {
@@ -157,7 +172,7 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
         }
       }
 
-      for (const group of ['frappe', 'frappe.db', 'frappe.ui.Dialog', 'frappe.datetime', 'frappe.model', 'frappe.realtime', 'frappe.ui.form', 'frappe.router', 'frappe.utils', 'frappe.web_form', 'frappe.listview_settings']) {
+      for (const group of ['frappe', 'locals', 'frappe.globals', 'frappe.db', 'frappe.ui.Dialog', 'frappe.datetime', 'frappe.model', 'frappe.realtime', 'frappe.ui.form', 'frappe.router', 'frappe.utils', 'frappe.web_form', 'frappe.listview_settings']) {
         const list = (jsApis as any)[group];
         if (Array.isArray(list)) {
           const found = list.find((item: any) => item.name === word || word === `${group}.${item.name}`);

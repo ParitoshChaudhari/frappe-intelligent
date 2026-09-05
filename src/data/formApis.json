@@ -98,25 +98,25 @@
           "type": "string",
           "structure": "\"grand_total\" OR \"items\"",
           "optional": false,
-          "description": "The fieldname of the field or child table to re-render."
+          "description": "Fieldname of the field to refresh."
         }
       ]
     },
     {
       "name": "set_df_property",
       "module": "frm",
-      "signature": "frm.set_df_property(fieldname: string, property: string, value: any)",
+      "signature": "frm.set_df_property(fieldname: string, property: string, value: any, docname?: string, table_field?: string): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Dynamically changes a DocField property (such as read_only, reqd, hidden, options, label, description) on the form.",
-      "example": "frm.set_df_property(\"reason\", \"reqd\", 1);\nfrm.set_df_property(\"rate\", \"read_only\", 1);",
+      "docstring": "Dynamically modifies a DocField property (e.g. `reqd`, `read_only`, `hidden`, `options`, `label`) on the active form.",
+      "example": "# 1. Make field mandatory:\nfrm.set_df_property(\"tax_id\", \"reqd\", 1);\n\n# 2. Hide a field conditionally:\nfrm.set_df_property(\"discount_percentage\", \"hidden\", frm.doc.total < 1000);\n\n# 3. Modify options in a Select field:\nfrm.set_df_property(\"priority\", \"options\", [\"Low\", \"Medium\", \"High\", \"Urgent\"]);",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string",
-          "structure": "\"reason\"",
+          "structure": "\"tax_id\"",
           "optional": false,
-          "description": "Target fieldname."
+          "description": "Target field identifier."
         },
         {
           "name": "property",
@@ -128,9 +128,21 @@
         {
           "name": "value",
           "type": "any",
-          "structure": "1 | 0 | \"Label text\"",
+          "structure": "1 | 0 | [\"Opt1\", \"Opt2\"] | \"New Label\"",
           "optional": false,
-          "description": "New property value."
+          "description": "New value to assign to the property."
+        },
+        {
+          "name": "docname",
+          "type": "string",
+          "optional": true,
+          "description": "Child row docname if modifying a child table row."
+        },
+        {
+          "name": "table_field",
+          "type": "string",
+          "optional": true,
+          "description": "Parent table fieldname if modifying a child table row."
         }
       ]
     },
@@ -139,46 +151,48 @@
       "module": "frm",
       "signature": "frm.toggle_display(fieldname: string | string[], show: boolean): void",
       "returnType": "void",
-      "returnDescription": "None",
-      "docstring": "Shows or hides one or more form fields or sections dynamically based on condition evaluation. Accepts either a single field name or an array of field names.",
-      "example": "frappe.ui.form.on(\"Customer\", {\n    customer_type(frm) {\n        const is_company = frm.doc.customer_type === \"Company\";\n        // Show or hide multiple tax and registration fields together:\n        frm.toggle_display([\"tax_id\", \"incorporation_date\", \"registered_address\"], is_company);\n    }\n});",
+      "returnDescription": "None.",
+      "docstring": "Shows or hides a form field (or array of fields) dynamically based on condition.",
+      "example": "frm.toggle_display([\"po_no\", \"po_date\"], frm.doc.customer_group === \"Commercial\");",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string | string[]",
-          "structure": "\"tax_id\" OR [\"tax_id\", \"company_name\"]",
+          "structure": "\"po_no\" | [\"po_no\", \"po_date\"]",
           "optional": false,
-          "description": "Field name or array of field names to toggle."
+          "description": "Fieldname or array of fieldnames to toggle."
         },
         {
           "name": "show",
           "type": "boolean",
-          "structure": "frm.doc.is_company === 1",
+          "structure": "true | false",
           "optional": false,
-          "description": "True to display fields; False to hide them."
+          "description": "Set true to display, false to hide."
         }
       ]
     },
     {
       "name": "toggle_enable",
       "module": "frm",
-      "signature": "frm.toggle_enable(fieldname: string | string[], enable: boolean)",
+      "signature": "frm.toggle_enable(fieldname: string | string[], enable: boolean): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Enables or disables (read-only) one or more fields based on a condition.",
-      "example": "frm.toggle_enable(\"posting_date\", frm.doc.docstatus === 0);",
+      "docstring": "Enables or disables user input on a field or array of fields.",
+      "example": "frm.toggle_enable(\"rate\", frm.doc.is_custom_pricing === 1);",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string | string[]",
+          "structure": "\"rate\" | [\"rate\", \"discount_amount\"]",
           "optional": false,
-          "description": "Fieldname or array of fieldnames."
+          "description": "Fieldname or list of fieldnames."
         },
         {
           "name": "enable",
           "type": "boolean",
+          "structure": "true | false",
           "optional": false,
-          "description": "True to enable (editable), False to disable."
+          "description": "Set true to enable, false to disable/read-only."
         }
       ]
     },
@@ -187,97 +201,90 @@
       "module": "frm",
       "signature": "frm.toggle_reqd(fieldname: string | string[], reqd: boolean): void",
       "returnType": "void",
-      "returnDescription": "None",
-      "docstring": "Dynamically toggles mandatory / required status on fields. If `reqd` is true, the user will be blocked from saving until the field is filled.",
-      "example": "frappe.ui.form.on(\"Employee\", {\n    is_contract_worker(frm) {\n        const is_contract = frm.doc.is_contract_worker === 1;\n        // Make agency name mandatory only if contract worker:\n        frm.toggle_reqd(\"contract_agency_name\", is_contract);\n    }\n});",
+      "returnDescription": "None.",
+      "docstring": "Toggles mandatory (required) status on a field or array of fields.",
+      "example": "frm.toggle_reqd(\"tax_id\", frm.doc.customer_type === \"Company\");",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string | string[]",
-          "structure": "\"contract_agency\"",
+          "structure": "\"tax_id\" | [\"tax_id\", \"pan_number\"]",
           "optional": false,
-          "description": "Field name or list of field names."
+          "description": "Fieldname or list of fieldnames."
         },
         {
           "name": "reqd",
           "type": "boolean",
           "structure": "true | false",
           "optional": false,
-          "description": "True to make mandatory; False to make optional."
+          "description": "Set true to make mandatory, false otherwise."
         }
       ]
     },
     {
       "name": "add_custom_button",
       "module": "frm",
-      "signature": "frm.add_custom_button(label: string, action: () => void, group?: string): JQuery",
-      "returnType": "JQuery Button Element",
-      "returnDescription": "The jQuery DOM element of the created button.",
-      "docstring": "Adds a custom action button in the form header toolbar. You can group multiple buttons together under a dropdown menu (e.g. \"Create\" -> \"Invoice\", \"Create\" -> \"Delivery Note\") and style them as primary or danger buttons.",
-      "example": "frappe.ui.form.on(\"Quotation\", {\n    refresh(frm) {\n        if (!frm.is_new() && frm.doc.docstatus === 1) {\n            // Add a button inside the 'Create' dropdown:\n            frm.add_custom_button(__(\"Sales Order\"), () => {\n                frappe.model.open_mapped_doc({\n                    method: \"erpnext.selling.doctype.quotation.quotation.make_sales_order\",\n                    frm: frm\n                });\n            }, __(\"Create\"));\n\n            // Add a standalone highlighted primary button:\n            const btn = frm.add_custom_button(__(\"Quick Approve\"), () => {\n                frm.call(\"approve_deal\").then(() => frm.reload_doc());\n            });\n            btn.addClass(\"btn-primary\");\n        }\n    }\n});",
+      "signature": "frm.add_custom_button(label: string, action: () => void, group?: string): any",
+      "returnType": "jQuery",
+      "returnDescription": "jQuery object of the created button element.",
+      "docstring": "Adds a custom action button to the Form toolbar or inside a dropdown group.",
+      "example": "frm.add_custom_button(__(\"Create Invoice\"), function() {\n    frappe.model.open_mapped_doc({\n        method: \"erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice\",\n        frm: cur_frm\n    });\n}, __(\"Create\"));",
       "parameters": [
         {
           "name": "label",
           "type": "string",
-          "structure": "__(\"Sales Order\")",
+          "structure": "\"Create Invoice\"",
           "optional": false,
-          "description": "Display label for the button."
+          "description": "Button label text."
         },
         {
           "name": "action",
-          "type": "Function",
+          "type": "function",
           "structure": "() => { ... }",
           "optional": false,
-          "description": "JavaScript click handler callback function."
+          "description": "Click event callback handler."
         },
         {
           "name": "group",
           "type": "string",
-          "structure": "__(\"Create\") | __(\"Actions\")",
+          "structure": "\"Create\" | \"Actions\"",
           "optional": true,
-          "description": "Parent dropdown menu name to group this button under."
+          "description": "Dropdown group heading name (optional)."
         }
       ]
     },
     {
       "name": "clear_custom_buttons",
       "module": "frm",
-      "signature": "frm.clear_custom_buttons()",
+      "signature": "frm.clear_custom_buttons(): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Removes all custom buttons added to the form toolbar.",
+      "docstring": "Removes all custom buttons from the Form toolbar.",
       "example": "frm.clear_custom_buttons();",
       "parameters": []
     },
     {
       "name": "set_query",
       "module": "frm",
-      "signature": "frm.set_query(fieldname: string, table_fieldname?: string, query_fn: () => object | string): void",
+      "signature": "frm.set_query(fieldname: string, callback: (doc: object, cdt?: string, cdn?: string) => object): void",
       "returnType": "void",
-      "returnDescription": "None",
-      "docstring": "Applies dynamic filter conditions to a Link field popup lookup dialog. Crucial for filtering dependent dropdowns (e.g. showing only Contacts that belong to the currently selected Customer, or filtering Items by Warehouse).",
-      "example": "frappe.ui.form.on(\"Sales Order\", {\n    refresh(frm) {\n        // 1. Static filter on parent Link field:\n        frm.set_query(\"customer\", function() {\n            return {\n                filters: {\n                    \"disabled\": 0,\n                    \"customer_group\": \"Commercial\"\n                }\n            };\n        });\n\n        // 2. Dynamic filter on Child Table Link field based on parent warehouse:\n        frm.set_query(\"item_code\", \"items\", function(doc, cdt, cdn) {\n            return {\n                filters: {\n                    \"is_sales_item\": 1,\n                    \"default_warehouse\": frm.doc.set_warehouse\n                }\n            };\n        });\n    }\n});",
+      "returnDescription": "None.",
+      "docstring": "Applies custom filters or custom query method to a Link or Dynamic Link field.",
+      "example": "frm.set_query(\"customer\", function() {\n    return {\n        filters: {\n            \"disabled\": 0,\n            \"customer_group\": \"Commercial\"\n        }\n    };\n});",
       "parameters": [
         {
           "name": "fieldname",
           "type": "string",
           "structure": "\"customer\"",
           "optional": false,
-          "description": "The Link fieldname to filter."
+          "description": "Target Link fieldname."
         },
         {
-          "name": "table_fieldname",
-          "type": "string",
-          "structure": "\"items\"",
-          "optional": true,
-          "description": "Child table fieldname (if filtering a link field inside a child grid table)."
-        },
-        {
-          "name": "query_fn",
-          "type": "Function",
-          "structure": "() => ({ filters: { \"status\": \"Active\" } })",
+          "name": "callback",
+          "type": "function",
+          "structure": "() => ({ filters: { status: \"Active\" } })",
           "optional": false,
-          "description": "Callback function returning filter object or custom Python query method path."
+          "description": "Function returning `{ filters: { ... } }` or `{ query: \"app.module.custom_query\" }`."
         }
       ]
     },
@@ -286,9 +293,9 @@
       "module": "frm",
       "signature": "frm.is_new() -> boolean",
       "returnType": "boolean",
-      "returnDescription": "True if the document has not yet been saved into database.",
-      "docstring": "Checks if the current open form is a brand new unsaved record.",
-      "example": "if (frm.is_new()) {\n    frm.set_value(\"status\", \"Draft\");\n}",
+      "returnDescription": "True if document is newly created and not yet saved in database.",
+      "docstring": "Checks if current document is newly created in memory and not yet saved in the database.",
+      "example": "if (frm.is_new()) {\n    frm.set_value(\"posting_date\", frappe.datetime.nowdate());\n}",
       "parameters": []
     },
     {
@@ -296,9 +303,9 @@
       "module": "frm",
       "signature": "frm.is_dirty() -> boolean",
       "returnType": "boolean",
-      "returnDescription": "True if there are unsaved modifications on the form.",
-      "docstring": "Returns True if any field on the form has been modified since last save.",
-      "example": "if (frm.is_dirty()) {\n    console.log(\"Form has unsaved changes\");\n}",
+      "returnDescription": "True if form has unsaved modifications.",
+      "docstring": "Checks if the user has made unsaved edits to the current document form.",
+      "example": "if (frm.is_dirty()) {\n    frappe.show_alert({ message: __(\"You have unsaved changes!\"), indicator: \"orange\" });\n}",
       "parameters": []
     },
     {
@@ -306,9 +313,9 @@
       "module": "frm",
       "signature": "frm.add_child(table_fieldname: string, values?: object): object",
       "returnType": "object",
-      "returnDescription": "The newly added child row object.",
-      "docstring": "Adds a new row to a child Table field on the current form.",
-      "example": "const row = frm.add_child(\"items\", {\n    item_code: \"ITEM-001\",\n    qty: 1,\n    rate: 100\n});\nfrm.refresh_field(\"items\");",
+      "returnDescription": "Newly created child table row doc object.",
+      "docstring": "Appends a new child row into a child table field on the form and returns the new row object.",
+      "example": "let row = frm.add_child(\"items\", {\n    item_code: \"ITEM-001\",\n    qty: 5,\n    rate: 100\n});\nfrm.refresh_field(\"items\");",
       "parameters": [
         {
           "name": "table_fieldname",
@@ -320,72 +327,60 @@
         {
           "name": "values",
           "type": "object",
-          "structure": "{\n    item_code: \"ITEM-001\",\n    qty: 2,\n    rate: 100.0\n}",
+          "structure": "{ item_code: \"ITEM-01\", qty: 1 }",
           "optional": true,
-          "description": "Initial field values assigned to the new child row."
+          "description": "Initial field values dictionary for the new child row."
         }
       ]
     },
     {
       "name": "set_intro",
       "module": "frm",
-      "signature": "frm.set_intro(message: string, color?: string): void",
+      "signature": "frm.set_intro(message: string, indicator?: string): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Displays a colored notification banner strip at the top of the form.",
-      "example": "frm.set_intro(__(\"This document is waiting for Manager Approval\"), \"orange\");",
+      "docstring": "Displays an introductory alert banner message above the form fields.",
+      "example": "frm.set_intro(__(\"Please verify all customer shipping addresses before approving.\"), \"blue\");",
       "parameters": [
         {
           "name": "message",
           "type": "string",
-          "structure": "__(\"This document is under audit review.\")",
+          "structure": "\"Important notice text\"",
           "optional": false,
-          "description": "Banner message text to display above form header."
+          "description": "Message string to render in banner."
         },
         {
-          "name": "color",
+          "name": "indicator",
           "type": "string",
-          "structure": "\"blue\" | \"green\" | \"orange\" | \"red\" | \"yellow\"",
+          "structure": "\"blue\" | \"green\" | \"orange\" | \"red\"",
           "optional": true,
           "default": "blue",
-          "description": "Color theme of alert banner."
+          "description": "Banner color theme."
         }
       ]
     },
     {
       "name": "call",
       "module": "frm",
-      "signature": "frm.call(method: string, args?: object, callback?: (r: any) => void, btn?: any): Promise<any>",
+      "signature": "frm.call(opts_or_method: string | object, args?: object): Promise<any>",
       "returnType": "Promise<any>",
-      "returnDescription": "Promise resolving with method response.",
-      "docstring": "Invokes a Python controller method defined on this DocType directly for this specific document instance.",
-      "example": "frm.call({\n    method: \"calculate_taxes\",\n    args: { tax_rate: 18 },\n    freeze: true,\n    callback(r) {\n        frm.reload_doc();\n    }\n});",
+      "returnDescription": "Promise resolving with server controller method response.",
+      "docstring": "Calls a backend Python controller method defined on this Document's server class.",
+      "example": "frm.call(\"recalculate_totals\").then(r => {\n    frm.reload_doc();\n});",
       "parameters": [
         {
-          "name": "method",
-          "type": "string",
-          "structure": "\"recalculate_prices\"",
+          "name": "opts_or_method",
+          "type": "string | object",
+          "structure": "\"method_name\" | { method: \"method_name\", args: { ... } }",
           "optional": false,
-          "description": "Document controller method name or whitelisted API dot-path."
+          "description": "Server controller method name or configuration object."
         },
         {
           "name": "args",
           "type": "object",
-          "structure": "{\n    param: \"value\"\n}",
+          "structure": "{ param1: \"val\" }",
           "optional": true,
-          "description": "Arguments passed to controller method."
-        },
-        {
-          "name": "callback",
-          "type": "function",
-          "optional": true,
-          "description": "Callback executed with response payload."
-        },
-        {
-          "name": "btn",
-          "type": "any",
-          "optional": true,
-          "description": "Button element to freeze/animate while executing."
+          "description": "Arguments payload."
         }
       ]
     },
@@ -395,7 +390,7 @@
       "signature": "frm.reload_doc()",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Reloads the current document from the server and refreshes the form interface.",
+      "docstring": "Reloads the document from the server database and re-renders the Form.",
       "example": "frm.reload_doc();",
       "parameters": []
     },
@@ -432,9 +427,9 @@
       "module": "frm",
       "signature": "frm.change_custom_button_type(label: string, group: string, type: string): void",
       "returnType": "void",
+      "returnDescription": "None (Applies bootstrap button styling).",
       "docstring": "Changes visual style / bootstrap color class of a custom button.",
       "example": "frm.change_custom_button_type('Approve', null, 'primary');",
-      "returnDescription": "None (Applies bootstrap button styling).",
       "parameters": [
         {
           "name": "label",
@@ -464,9 +459,9 @@
       "module": "frm",
       "signature": "frm.clear_table(table_fieldname: string): void",
       "returnType": "void",
+      "returnDescription": "None (Empties all rows from child table).",
       "docstring": "Removes all child rows from specified child table field.",
       "example": "frm.clear_table('items');\nfrm.refresh_field('items');",
-      "returnDescription": "None (Empties all rows from child table).",
       "parameters": [
         {
           "name": "table_fieldname",
@@ -482,9 +477,9 @@
       "module": "frm",
       "signature": "frm.scroll_to_field(fieldname: string): void",
       "returnType": "void",
+      "returnDescription": "None (Animates form viewport to field).",
       "docstring": "Smoothly scrolls form view to target field input.",
       "example": "frm.scroll_to_field('grand_total');",
-      "returnDescription": "None (Animates form viewport to field).",
       "parameters": [
         {
           "name": "fieldname",
@@ -500,9 +495,9 @@
       "module": "frm",
       "signature": "frm.disable_save(disable: boolean = true): void",
       "returnType": "void",
+      "returnDescription": "None (Hides/disables form Save button).",
       "docstring": "Disables standard Save button in form toolbar.",
       "example": "frm.disable_save(true);",
-      "returnDescription": "None (Hides/disables form Save button).",
       "parameters": [
         {
           "name": "disable",
@@ -518,9 +513,38 @@
       "module": "frm",
       "signature": "frm.enable_save()",
       "returnType": "void",
+      "returnDescription": "None (Re-enables form Save button).",
       "docstring": "Re-enables standard Save button in form toolbar.",
       "example": "frm.enable_save();",
-      "returnDescription": "None (Re-enables form Save button)."
+      "parameters": []
+    },
+    {
+      "name": "get_field",
+      "module": "frm",
+      "signature": "frm.get_field(fieldname: string): object",
+      "returnType": "object",
+      "returnDescription": "Control object of the specified field containing `.grid`, `.$wrapper`, `.df`.",
+      "docstring": "Retrieves the UI control object for a field on the form.",
+      "example": "const itemsField = frm.get_field(\"items\");\nconst grid = itemsField.grid;\ngrid.refresh();",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"items\" OR \"customer\"",
+          "optional": false,
+          "description": "Fieldname string on form."
+        }
+      ]
+    },
+    {
+      "name": "set_read_only",
+      "module": "frm",
+      "signature": "frm.set_read_only(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Puts all fields in the form into read-only mode and disables saving.",
+      "example": "if (frm.doc.workflow_state === \"Approved\") {\n    frm.set_read_only();\n}",
+      "parameters": []
     }
   ],
   "grid": [
@@ -539,6 +563,12 @@
           "structure": "1",
           "optional": true,
           "description": "Target index position where the new row should be placed."
+        },
+        {
+          "name": "callback",
+          "type": "function",
+          "optional": true,
+          "description": "Callback executed after row is appended."
         }
       ]
     },
@@ -550,6 +580,16 @@
       "returnDescription": "Array of selected row docnames (cdn values).",
       "docstring": "Returns the names of all checked / selected rows in the child table grid.",
       "example": "const selected_rows = frm.fields_dict['items'].grid.get_selected();",
+      "parameters": []
+    },
+    {
+      "name": "get_selected_children",
+      "module": "grid",
+      "signature": "grid.get_selected_children() -> object[]",
+      "returnType": "object[]",
+      "returnDescription": "Array of selected child row document objects.",
+      "docstring": "Returns the full document objects of all checked / selected rows in the child table grid.",
+      "example": "const selectedDocs = frm.fields_dict['items'].grid.get_selected_children();\nselectedDocs.forEach(row => {\n    console.log(row.item_code, row.qty);\n});",
       "parameters": []
     },
     {
@@ -565,11 +605,167 @@
     {
       "name": "refresh",
       "module": "grid",
-      "signature": "grid.refresh()",
+      "signature": "grid.refresh(): void",
       "returnType": "void",
       "returnDescription": "None.",
-      "docstring": "Re-renders the child table grid rows and totals on screen.",
+      "docstring": "Re-renders the child table grid rows, columns, and pagination on screen.",
       "example": "frm.fields_dict['items'].grid.refresh();",
+      "parameters": []
+    },
+    {
+      "name": "refresh_row",
+      "module": "grid",
+      "signature": "grid.refresh_row(docname: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Re-renders a specific child row in the grid table without re-rendering the entire grid.",
+      "example": "frm.fields_dict['items'].grid.refresh_row(cdn);",
+      "parameters": [
+        {
+          "name": "docname",
+          "type": "string",
+          "structure": "cdn OR \"row-001\"",
+          "optional": false,
+          "description": "Child document row name ID (cdn)."
+        }
+      ]
+    },
+    {
+      "name": "set_column_disp",
+      "module": "grid",
+      "signature": "grid.set_column_disp(fieldname: string, show: boolean): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Dynamically shows or hides a column in the child table grid table.",
+      "example": "frm.fields_dict['items'].grid.set_column_disp('discount_percentage', frm.doc.has_discounts === 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"discount_percentage\"",
+          "optional": false,
+          "description": "Child Table fieldname column."
+        },
+        {
+          "name": "show",
+          "type": "boolean",
+          "structure": "true | false",
+          "optional": false,
+          "description": "True to show column, false to hide."
+        }
+      ]
+    },
+    {
+      "name": "toggle_reqd",
+      "module": "grid",
+      "signature": "grid.toggle_reqd(fieldname: string, reqd: boolean): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Toggles mandatory requirement on a column in the child table grid.",
+      "example": "frm.fields_dict['items'].grid.toggle_reqd('batch_no', frm.doc.has_batch_items === 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"batch_no\"",
+          "optional": false,
+          "description": "Column fieldname in child table."
+        },
+        {
+          "name": "reqd",
+          "type": "boolean",
+          "structure": "true | false",
+          "optional": false,
+          "description": "True if mandatory, false otherwise."
+        }
+      ]
+    },
+    {
+      "name": "toggle_enable",
+      "module": "grid",
+      "signature": "grid.toggle_enable(fieldname: string, enable: boolean): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Enables or disables user editing on a column in the child table grid.",
+      "example": "frm.fields_dict['items'].grid.toggle_enable('rate', frm.doc.allow_custom_rates === 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"rate\"",
+          "optional": false,
+          "description": "Column fieldname in child table."
+        },
+        {
+          "name": "enable",
+          "type": "boolean",
+          "structure": "true | false",
+          "optional": false,
+          "description": "True to enable input, false to make read-only."
+        }
+      ]
+    },
+    {
+      "name": "toggle_display",
+      "module": "grid",
+      "signature": "grid.toggle_display(fieldname: string, show: boolean): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Shows or hides a child table column on screen.",
+      "example": "frm.fields_dict['items'].grid.toggle_display('warehouse', frm.doc.is_pos !== 1);",
+      "parameters": [
+        {
+          "name": "fieldname",
+          "type": "string",
+          "structure": "\"warehouse\"",
+          "optional": false,
+          "description": "Child column fieldname."
+        },
+        {
+          "name": "show",
+          "type": "boolean",
+          "structure": "true | false",
+          "optional": false,
+          "description": "True to display, false to hide."
+        }
+      ]
+    },
+    {
+      "name": "open_form",
+      "module": "grid",
+      "signature": "grid.open_form(docname: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Opens the child row edit modal form popup for a specific row in the grid.",
+      "example": "frm.fields_dict['items'].grid.open_form(cdn);",
+      "parameters": [
+        {
+          "name": "docname",
+          "type": "string",
+          "structure": "cdn",
+          "optional": false,
+          "description": "Child row document name."
+        }
+      ]
+    },
+    {
+      "name": "remove_all",
+      "module": "grid",
+      "signature": "grid.remove_all(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Removes all child rows from the grid and updates the parent form.",
+      "example": "frm.fields_dict['items'].grid.remove_all();",
+      "parameters": []
+    },
+    {
+      "name": "cannot_add_rows",
+      "module": "grid",
+      "signature": "grid.cannot_add_rows: boolean",
+      "returnType": "boolean",
+      "returnDescription": "Boolean flag.",
+      "docstring": "Flag that prevents users from adding new rows to the child table grid via UI.",
+      "example": "frm.fields_dict['items'].grid.cannot_add_rows = true;\nfrm.fields_dict['items'].grid.refresh();",
       "parameters": []
     }
   ],
@@ -592,6 +788,26 @@
       "returnDescription": "Array of checked row objects with docname and fields.",
       "docstring": "Returns all checked / selected document rows in the ListView.",
       "example": "const selected = listview.get_checked_items();",
+      "parameters": []
+    },
+    {
+      "name": "clear_checked_items",
+      "module": "listview",
+      "signature": "listview.clear_checked_items(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Unchecks all selected rows in the ListView.",
+      "example": "listview.clear_checked_items();",
+      "parameters": []
+    },
+    {
+      "name": "select_all",
+      "module": "listview",
+      "signature": "listview.select_all(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Selects / checks all visible rows in the ListView.",
+      "example": "listview.select_all();",
       "parameters": []
     }
   ],
@@ -670,6 +886,30 @@
       ]
     },
     {
+      "name": "remove_inner_button",
+      "module": "frappe.ui.Page",
+      "signature": "page.remove_inner_button(label: string, group?: string): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Removes an inner action button from the page toolbar.",
+      "example": "page.remove_inner_button(__(\"Sync Data\"), __(\"Actions\"));",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Sync Data\"",
+          "optional": false,
+          "description": "Button label to remove."
+        },
+        {
+          "name": "group",
+          "type": "string",
+          "optional": true,
+          "description": "Button group name."
+        }
+      ]
+    },
+    {
       "name": "add_field",
       "module": "frappe.ui.Page",
       "signature": "page.add_field(df: object) -> object",
@@ -716,6 +956,88 @@
           "structure": "\"fa fa-plus\"",
           "optional": true,
           "description": "FontAwesome icon class name."
+        }
+      ]
+    },
+    {
+      "name": "set_secondary_action",
+      "module": "frappe.ui.Page",
+      "signature": "page.set_secondary_action(label: string, action: () => void, icon?: string): any",
+      "returnType": "jQuery",
+      "returnDescription": "jQuery secondary button element.",
+      "docstring": "Configures secondary action button in page header.",
+      "example": "page.set_secondary_action(__(\"Export\"), () => exportReport());",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Export\"",
+          "optional": false,
+          "description": "Button label."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "optional": false,
+          "description": "Action callback handler."
+        }
+      ]
+    },
+    {
+      "name": "clear_inner_toolbar",
+      "module": "frappe.ui.Page",
+      "signature": "page.clear_inner_toolbar(): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Removes all custom buttons and dropdowns from the page toolbar.",
+      "example": "page.clear_inner_toolbar();",
+      "parameters": []
+    },
+    {
+      "name": "add_menu_item",
+      "module": "frappe.ui.Page",
+      "signature": "page.add_menu_item(label: string, action: () => void, standard?: boolean): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Adds a menu item under the standard 'Menu' dropdown in the page header.",
+      "example": "page.add_menu_item(__(\"Print Summary\"), () => printSummary());",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Print Summary\"",
+          "optional": false,
+          "description": "Menu item label text."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "optional": false,
+          "description": "Click event handler."
+        }
+      ]
+    },
+    {
+      "name": "add_action_item",
+      "module": "frappe.ui.Page",
+      "signature": "page.add_action_item(label: string, action: () => void): void",
+      "returnType": "void",
+      "returnDescription": "None.",
+      "docstring": "Adds an action item under the 'Actions' dropdown in the page header.",
+      "example": "page.add_action_item(__(\"Bulk Email\"), () => sendEmails());",
+      "parameters": [
+        {
+          "name": "label",
+          "type": "string",
+          "structure": "\"Bulk Email\"",
+          "optional": false,
+          "description": "Action item label text."
+        },
+        {
+          "name": "action",
+          "type": "function",
+          "optional": false,
+          "description": "Click event handler."
         }
       ]
     }

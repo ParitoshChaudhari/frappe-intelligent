@@ -128,6 +128,98 @@ describe('FrappeCompletionProvider Expanded APIs Test Suite', () => {
     assert.ok(labels.includes('options'));
   });
 
+  it('should provide frappe.model completions with table and document methods in JavaScript', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/public/js/model_test.js',
+      getText: () => 'frappe.model.',
+      lineAt: () => ({ text: 'frappe.model.' }),
+    };
+
+    const position = new vscode.Position(0, 'frappe.model.'.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('get_doc'));
+    assert.ok(labels.includes('set_value'));
+    assert.ok(labels.includes('get_value'));
+    assert.ok(labels.includes('add_child'));
+    assert.ok(labels.includes('clear_table'));
+    assert.ok(labels.includes('get_children'));
+    assert.ok(labels.includes('delete_doc'));
+    assert.ok(labels.includes('sync'));
+    assert.ok(labels.includes('with_doctype'));
+    assert.ok(labels.includes('with_doc'));
+    assert.ok(labels.includes('is_submittable'));
+    assert.ok(labels.includes('can_create'));
+    assert.ok(labels.includes('can_read'));
+    assert.ok(labels.includes('can_write'));
+  });
+
+  it('should provide expanded grid table methods for child tables', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/public/js/grid_test.js',
+      getText: () => 'grid.',
+      lineAt: () => ({ text: 'grid.' }),
+    };
+
+    const position = new vscode.Position(0, 'grid.'.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('add_new_row'));
+    assert.ok(labels.includes('get_selected'));
+    assert.ok(labels.includes('get_selected_children'));
+    assert.ok(labels.includes('refresh_row'));
+    assert.ok(labels.includes('set_column_disp'));
+    assert.ok(labels.includes('toggle_reqd'));
+    assert.ok(labels.includes('toggle_enable'));
+    assert.ok(labels.includes('toggle_display'));
+    assert.ok(labels.includes('open_form'));
+    assert.ok(labels.includes('remove_all'));
+  });
+
+  it('should provide child table field completions on locals[cdt][cdn].', () => {
+    const jsCode = `
+frappe.ui.form.on("Employee", {
+    refresh(frm) {
+        const row = locals[cdt][cdn];
+        locals[cdt][cdn].
+    }
+});`;
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/doctype/employee/employee.js',
+      getText: () => jsCode,
+      lineAt: () => ({ text: '        locals[cdt][cdn].' }),
+    };
+
+    const position = new vscode.Position(4, '        locals[cdt][cdn].'.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('first_name'));
+    assert.ok(labels.includes('department'));
+    assert.ok(labels.includes('salary'));
+  });
+
+  it('should provide frappe.ui namespace completions in JavaScript', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/public/js/desk.js',
+      getText: () => 'frappe.ui.',
+      lineAt: () => ({ text: 'frappe.ui.' }),
+    };
+
+    const position = new vscode.Position(0, 'frappe.ui.'.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('Dialog'));
+    assert.ok(labels.includes('form'));
+  });
+
   it('should clean up tracked symbols when removeFile is called', () => {
     const index = IndexManager.getInstance();
     const fakeFilePath = '/apps/frappe/frappe/doctype/test_doc/test_doc.json';

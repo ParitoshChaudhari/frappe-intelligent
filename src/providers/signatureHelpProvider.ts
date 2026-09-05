@@ -195,15 +195,34 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
         const found = list.find((item: any) => item.name === propName);
         if (found) return found;
       }
-    } else if (callee.startsWith('dialog.') || callee.startsWith('d.')) {
-      const methodName = callee.replace(/^(?:dialog|d)\./, '');
+    } else if (callee.startsWith('frappe.model.')) {
+      const methodName = callee.replace(/^frappe\.model\./, '');
+      const list = (jsApis as any)['frappe.model'];
+      if (Array.isArray(list)) {
+        const found = list.find((item: any) => item.name === methodName);
+        if (found) return found;
+      }
+    } else if (callee.startsWith('frappe.ui.form.')) {
+      const methodName = callee.replace(/^frappe\.ui\.form\./, '');
+      const list = (jsApis as any)['frappe.ui.form'];
+      if (Array.isArray(list)) {
+        const found = list.find((item: any) => item.name === methodName);
+        if (found) return found;
+      }
+    } else if (callee.startsWith('frappe.ui.Dialog.') || callee.startsWith('dialog.') || callee.startsWith('d.') || callee.startsWith('cur_dialog.')) {
+      const methodName = callee.replace(/^(?:frappe\.ui\.Dialog|dialog|d|cur_dialog)\./, '');
       const list = (jsApis as any)['frappe.ui.Dialog'];
       if (Array.isArray(list)) {
         const found = list.find((item: any) => item.name === methodName);
         if (found) return found;
       }
+    } else if (callee.startsWith('locals')) {
+      const list = (jsApis as any)['locals'];
+      if (Array.isArray(list)) {
+        const found = list.find((item: any) => item.name === 'locals');
+        if (found) return found;
+      }
     }
-
 
     // 2. Fallback search
     if (isServer) {
@@ -211,7 +230,7 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
       for (const group of groups) {
         const list = (pythonApis as any)[group];
         if (Array.isArray(list)) {
-          const found = list.find((item: any) => callee === item.name || callee === `${group}.${item.name}`);
+          const found = list.find((item: any) => item.name === callee || callee.endsWith(`.${item.name}`));
           if (found) return found;
         }
       }
@@ -219,19 +238,11 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
       const whitelisted = index.getWhitelistedMethod(callee);
       if (whitelisted) return whitelisted;
     } else {
-      const groups = ['frappe', 'frappe.db', 'frappe.ui.Dialog', 'frappe.datetime', 'frappe.model', 'frappe.realtime', 'frappe.ui.form', 'frappe.router', 'frappe.utils'];
+      const groups = ['frm', 'grid', 'page', 'listview', 'frappe', 'locals', 'frappe.globals', 'frappe.db', 'frappe.model', 'frappe.ui.Dialog', 'frappe.ui.form', 'frappe.datetime', 'frappe.router', 'frappe.utils', 'frappe.web_form', 'frappe.listview_settings'];
       for (const group of groups) {
-        const list = (jsApis as any)[group];
+        const list = (formApis as any)[group] || (jsApis as any)[group];
         if (Array.isArray(list)) {
-          const found = list.find((item: any) => callee === item.name || callee === `${group}.${item.name}`);
-          if (found) return found;
-        }
-      }
-
-      for (const group of ['frm', 'grid', 'page']) {
-        const list = (formApis as any)[group];
-        if (Array.isArray(list)) {
-          const found = list.find((item: any) => callee === item.name || callee === `${group}.${item.name}`);
+          const found = list.find((item: any) => item.name === callee || callee.endsWith(`.${item.name}`));
           if (found) return found;
         }
       }
@@ -239,6 +250,5 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
 
     return null;
   }
-
 }
 

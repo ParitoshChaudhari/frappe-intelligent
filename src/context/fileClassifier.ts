@@ -120,9 +120,15 @@ export class FileClassifier {
         } else if (fileContent.includes('@frappe.whitelist')) {
           result.fileType = 'api_module_py';
         }
-      } else if (ext === '.js') {
+      } else if (ext === '.js' || ext === '.ts' || ext === '.jsx' || ext === '.tsx') {
         if (fileContent.includes('frappe.ui.form.on(') || fileContent.includes('refresh(frm)')) {
           result.fileType = 'doctype_form_js';
+        }
+        if (!result.doctypeName) {
+          const formOnMatch = fileContent.match(/frappe\.ui\.form\.on\(\s*['"]([^'"]+)['"]/);
+          if (formOnMatch && formOnMatch[1]) {
+            result.doctypeName = formOnMatch[1];
+          }
         }
       }
     }
