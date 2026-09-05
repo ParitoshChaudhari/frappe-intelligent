@@ -854,6 +854,273 @@
         }
       ],
       "returnDescription": "None (Sets HTTP response to rendered web page)."
+    },
+    {
+      "name": "whitelist",
+      "module": "frappe",
+      "signature": "frappe.whitelist(allow_guest: bool = False, xss_safe: bool = False, methods: list[str] = None)",
+      "returnType": "Decorator",
+      "returnDescription": "Decorates a Python function to make it callable via HTTP API / frappe.call.",
+      "docstring": "Decorator that exposes a server-side Python function to the client-side JavaScript (`frappe.call`), Mobile Apps, REST API (`/api/method/app.path.func`), and Webhooks. By default, only authenticated users can invoke whitelisted methods.",
+      "example": "# 1. Standard Whitelisted API (Logged-in users only):\n@frappe.whitelist()\ndef get_user_stats(user_id):\n    return {\n        \"open_tickets\": frappe.db.count(\"Issue\", {\"raised_by\": user_id, \"status\": \"Open\"}),\n        \"last_login\": frappe.db.get_value(\"User\", user_id, \"last_login\")\n    }\n\n# 2. Public API accessible by guest (unauthenticated) users with POST method restriction:\n@frappe.whitelist(allow_guest=True, methods=[\"POST\"])\ndef submit_contact_inquiry(full_name, email, message):\n    lead = frappe.get_doc({\n        \"doctype\": \"Lead\",\n        \"lead_name\": full_name,\n        \"email_id\": email,\n        \"notes\": message\n    })\n    lead.insert(ignore_permissions=True)\n    return {\"status\": \"success\", \"lead\": lead.name}",
+      "parameters": [
+        {
+          "name": "allow_guest",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Set to True if guests / unauthenticated public visitors should be allowed to execute this API."
+        },
+        {
+          "name": "methods",
+          "type": "list[str]",
+          "structure": "[\"POST\", \"GET\"]",
+          "optional": true,
+          "description": "Restrict allowed HTTP request methods (e.g. [\"POST\", \"PUT\"]). Defaults to all methods."
+        },
+        {
+          "name": "xss_safe",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "Mark output as safe HTML to prevent automatic escaping."
+        }
+      ]
+    },
+    {
+      "name": "copy_doc",
+      "module": "frappe",
+      "signature": "frappe.copy_doc(doc: Document | dict, ignore_no_copy: bool = True) -> Document",
+      "returnType": "Document",
+      "returnDescription": "A new cloned Document instance in memory (not yet inserted into database).",
+      "docstring": "Creates a deep copy of a document and all of its child table records in memory. Automatically clears the primary key (`name`), creation dates, modified timestamps, and submission status (`docstatus=0`), allowing you to modify and `.insert()` as a new record.",
+      "example": "# Duplicate an existing Sales Order for a new customer:\noriginal_so = frappe.get_doc(\"Sales Order\", \"SO-2026-0001\")\nnew_so = frappe.copy_doc(original_so)\nnew_so.customer = \"New Customer Inc\"\nnew_so.transaction_date = frappe.utils.today()\nnew_so.insert()",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "Document | dict",
+          "optional": false,
+          "description": "The source document instance to duplicate."
+        },
+        {
+          "name": "ignore_no_copy",
+          "type": "bool",
+          "optional": true,
+          "default": "True",
+          "description": "If True, fields marked with \"No Copy\" in DocType schema are skipped and not cloned."
+        }
+      ]
+    },
+    {
+      "name": "rename_doc",
+      "module": "frappe",
+      "signature": "frappe.rename_doc(doctype: str, old: str, new: str, force: bool = False, merge: bool = False, ignore_permissions: bool = False) -> str",
+      "returnType": "str",
+      "returnDescription": "The new document name/ID.",
+      "docstring": "Renames a document primary key (`name`) and automatically updates all foreign key references, Link fields, and child tables across the entire database. If `merge=True`, merges all references from `old` into `new` and deletes `old`.",
+      "example": "# 1. Rename a customer code safely across all invoices and orders:\nfrappe.rename_doc(\"Customer\", \"CUST-OLD-01\", \"CUST-ACME-01\")\n\n# 2. Merge duplicate items into one master item:\nfrappe.rename_doc(\"Item\", \"WIDGET-OLD\", \"WIDGET-MASTER\", merge=True)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "The DocType name of the record being renamed."
+        },
+        {
+          "name": "old",
+          "type": "str",
+          "structure": "\"CUST-OLD-01\"",
+          "optional": false,
+          "description": "The current primary key / name of the document."
+        },
+        {
+          "name": "new",
+          "type": "str",
+          "structure": "\"CUST-NEW-01\"",
+          "optional": false,
+          "description": "The new primary key / name to assign."
+        },
+        {
+          "name": "merge",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, merges the old record into an existing target record and deletes the old one."
+        }
+      ]
+    },
+    {
+      "name": "delete_doc",
+      "module": "frappe",
+      "signature": "frappe.delete_doc(doctype: str, name: str, force: bool = False, ignore_permissions: bool = False, delete_permanently: bool = False)",
+      "returnType": "None",
+      "returnDescription": "None",
+      "docstring": "Deletes a document from the database along with its child table rows, attachments, activity feeds, and dynamic links. By default, moves deleted documents to the \"Deleted Document\" trash table unless `delete_permanently=True`.",
+      "example": "# 1. Safely delete a draft Quotation:\nfrappe.delete_doc(\"Quotation\", \"QTN-2026-0004\")\n\n# 2. Force delete permanently in a cleanup script:\nfrappe.delete_doc(\"Log Entry\", \"LOG-00123\", force=True, delete_permanently=True)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Quotation\"",
+          "optional": false,
+          "description": "DocType name of the document to delete."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"QTN-2026-0004\"",
+          "optional": false,
+          "description": "Primary key / name of the document."
+        },
+        {
+          "name": "force",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, bypasses checks for linked records and submitted status."
+        },
+        {
+          "name": "delete_permanently",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, bypasses trash and deletes row permanently from database."
+        }
+      ]
+    },
+    {
+      "name": "get_meta",
+      "module": "frappe",
+      "signature": "frappe.get_meta(doctype: str, cached: bool = True) -> Meta",
+      "returnType": "Meta",
+      "returnDescription": "DocType Meta schema instance containing field definitions, properties, and permissions.",
+      "docstring": "Fetches the DocType metadata definition (`Meta` object). Allows you to programmatically inspect fields, check if a field exists, get field types, link targets, and read permission rules.",
+      "example": "# Inspect DocType schema:\nmeta = frappe.get_meta(\"Customer\")\nprint(meta.has_field(\"tax_id\"))  # True/False\n\n# Loop through all currency fields:\nfor field in meta.get_currency_fields():\n    print(field.fieldname, field.label)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Customer\"",
+          "optional": false,
+          "description": "Name of the DocType to inspect."
+        }
+      ]
+    },
+    {
+      "name": "get_cached_value",
+      "module": "frappe",
+      "signature": "frappe.get_cached_value(doctype: str, name: str, fieldname: str | list[str] | tuple, as_dict: bool = False) -> Any",
+      "returnType": "Any",
+      "returnDescription": "Field value or dict/tuple of field values fetched from Redis cache.",
+      "docstring": "Ultra-fast memory-cached database lookup for single or multiple fields. If the value exists in Redis memory cache, it returns immediately without executing a SQL query. Ideal for high-traffic lookups on master records like Company, Settings, or Currency.",
+      "example": "# 1. Fetch a single field from memory cache:\ncurrency = frappe.get_cached_value(\"Company\", \"Acme Corp\", \"default_currency\")\n\n# 2. Fetch multiple fields as a dictionary:\ncompany_info = frappe.get_cached_value(\n    \"Company\",\n    \"Acme Corp\",\n    [\"default_currency\", \"country\", \"tax_id\"],\n    as_dict=True\n)\nprint(company_info.default_currency, company_info.country)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Company\"",
+          "optional": false,
+          "description": "DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"Acme Corp\"",
+          "optional": false,
+          "description": "Document ID / Name."
+        },
+        {
+          "name": "fieldname",
+          "type": "str | list[str]",
+          "structure": "\"default_currency\" OR [\"country\", \"currency\"]",
+          "optional": false,
+          "description": "Field name or list of field names to retrieve."
+        }
+      ]
+    },
+    {
+      "name": "get_roles",
+      "module": "frappe",
+      "signature": "frappe.get_roles(username: str = None) -> list[str]",
+      "returnType": "list[str]",
+      "returnDescription": "List of role names assigned to the user.",
+      "docstring": "Returns a list of all role names assigned to a given user. If username is omitted, returns the roles for the currently logged-in session user (`frappe.session.user`).",
+      "example": "# Check if the current user is an Accounts Manager or System Manager:\nroles = frappe.get_roles()\nif \"Accounts Manager\" in roles or \"System Manager\" in roles:\n    print(\"User is authorized for financial approval\")",
+      "parameters": [
+        {
+          "name": "username",
+          "type": "str",
+          "structure": "\"john@example.com\"",
+          "optional": true,
+          "default": "frappe.session.user",
+          "description": "Email / user ID to check roles for. Defaults to active session user."
+        }
+      ]
+    },
+    {
+      "name": "has_permission",
+      "module": "frappe",
+      "signature": "frappe.has_permission(doctype: str, ptype: str = \"read\", doc: Document | str = None, user: str = None) -> bool",
+      "returnType": "bool",
+      "returnDescription": "True if user has permission; False otherwise.",
+      "docstring": "Checks if the user has the specified permission (\"read\", \"write\", \"create\", \"submit\", \"cancel\", \"delete\", \"print\", \"email\") on a DocType or a specific document instance (evaluating user permissions and role permissions).",
+      "example": "# Check if current user can edit a specific Sales Order:\ncan_edit = frappe.has_permission(\"Sales Order\", ptype=\"write\", doc=\"SO-2026-0001\")\nif not can_edit:\n    frappe.throw(\"You do not have permission to modify this Sales Order.\", frappe.PermissionError)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Order\"",
+          "optional": false,
+          "description": "DocType name to verify permission on."
+        },
+        {
+          "name": "ptype",
+          "type": "str",
+          "structure": "\"read\" | \"write\" | \"submit\" | \"cancel\" | \"delete\"",
+          "optional": true,
+          "default": "\"read\"",
+          "description": "The permission level to check."
+        },
+        {
+          "name": "doc",
+          "type": "Document | str",
+          "optional": true,
+          "description": "Optional Document instance or document name to evaluate document-level User Permissions."
+        }
+      ]
+    },
+    {
+      "name": "rate_limit",
+      "module": "frappe",
+      "signature": "frappe.rate_limit(limit: int, seconds: int, key: str = None, ip_based: bool = False)",
+      "returnType": "Decorator",
+      "returnDescription": "Decorator that throttles API execution.",
+      "docstring": "Decorator to limit the number of API calls a user or IP address can make within a specified time window. Throws `frappe.TooManyRequestsError` (HTTP 429) when the limit is exceeded.",
+      "example": "# Allow max 5 attempts every 60 seconds per user:\n@frappe.whitelist(allow_guest=True)\n@frappe.rate_limit(limit=5, seconds=60, ip_based=True)\ndef send_otp(phone_number):\n    # Sends SMS OTP safely without spamming\n    pass",
+      "parameters": [
+        {
+          "name": "limit",
+          "type": "int",
+          "structure": "5",
+          "optional": false,
+          "description": "Maximum number of allowed requests in the time window."
+        },
+        {
+          "name": "seconds",
+          "type": "int",
+          "structure": "60",
+          "optional": false,
+          "description": "Time window duration in seconds."
+        },
+        {
+          "name": "ip_based",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, rate-limits per client IP address instead of user session."
+        }
+      ]
     }
   ],
   "frappe.session": [
@@ -1006,39 +1273,40 @@
     {
       "name": "get_values",
       "module": "frappe.db",
-      "signature": "frappe.db.get_values(doctype: str, filters: dict | str = None, fieldname: str | list[str] = None, as_dict: bool = False) -> list",
+      "signature": "frappe.db.get_values(doctype: str, filters: dict | list | str = None, fieldname: str | list[str] = \"*\", as_dict: bool = False, order_by: str = None) -> list",
       "returnType": "list[dict] | list[tuple]",
-      "returnDescription": "List of matched records with the requested fields.",
-      "docstring": "Fetches multiple rows from the database with specific column values without loading full documents.",
-      "example": "active_users = frappe.db.get_values(\"User\", {\"enabled\": 1}, [\"name\", \"full_name\"], as_dict=True)",
+      "returnDescription": "List of matching records formatted as dicts (if as_dict=True) or tuples of column values.",
+      "docstring": "Fetches multiple records and multiple columns directly from the database without loading full Document instances into memory. Much faster than `frappe.get_all` when you only need raw column values.",
+      "example": "# 1. Fetch specific columns as a list of dictionaries:\ncustomers = frappe.db.get_values(\n    \"Customer\",\n    filters={\"customer_group\": \"Commercial\", \"disabled\": 0},\n    fieldname=[\"name\", \"customer_name\", \"territory\", \"credit_limit\"],\n    as_dict=True\n)\nfor c in customers:\n    print(c.customer_name, c.credit_limit)\n\n# 2. Fetch single column values as flat list:\nactive_emails = [r[0] for r in frappe.db.get_values(\"User\", {\"enabled\": 1}, \"email\")]",
       "parameters": [
         {
           "name": "doctype",
           "type": "str",
-          "structure": "\"Employee\"",
+          "structure": "\"Customer\"",
           "optional": false,
-          "description": "Target DocType name."
+          "description": "DocType table name to query."
         },
         {
           "name": "filters",
-          "type": "dict | str",
-          "structure": "{\"status\": \"Active\"}",
+          "type": "dict | list | str",
+          "structure": "{\"status\": \"Open\"} OR [[\"posting_date\", \">=\", \"2026-01-01\"]]",
           "optional": true,
-          "description": "Filter criteria."
+          "description": "Filter conditions to match rows."
         },
         {
           "name": "fieldname",
           "type": "str | list[str]",
-          "structure": "[\"name\", \"employee_name\"]",
+          "structure": "[\"name\", \"customer_name\", \"email_id\"]",
           "optional": true,
-          "description": "Fieldname(s) to fetch."
+          "default": "\"*\"",
+          "description": "List of fieldnames to retrieve from the database table."
         },
         {
           "name": "as_dict",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Return rows as dictionaries rather than tuples."
+          "description": "If True, returns records as dictionaries with field names as keys."
         }
       ]
     },
@@ -1091,25 +1359,32 @@
     {
       "name": "get_single_value",
       "module": "frappe.db",
-      "signature": "frappe.db.get_single_value(doctype: str, fieldname: str) -> Any",
+      "signature": "frappe.db.get_single_value(doctype: str, fieldname: str, cache: bool = True) -> Any",
       "returnType": "Any",
-      "returnDescription": "Value of field from Single DocType table.",
-      "docstring": "Fetches a field value from a Single DocType (like 'System Settings' or 'HR Settings').",
-      "example": "currency = frappe.db.get_single_value(\"System Settings\", \"currency\")",
+      "returnDescription": "The value of the requested field in the Single DocType.",
+      "docstring": "Fetches a single setting or field value from a Single DocType (e.g. `System Settings`, `Stock Settings`, `HR Settings`). Single DocTypes store all their field settings as key-value pairs in the `tabSingles` table.",
+      "example": "# 1. Get default company from Global Defaults:\ndefault_company = frappe.db.get_single_value(\"Global Defaults\", \"default_company\")\n\n# 2. Check if 2FA is enforced in System Settings:\ntwo_factor_enabled = frappe.db.get_single_value(\"System Settings\", \"enable_two_factor_auth\")",
       "parameters": [
         {
           "name": "doctype",
           "type": "str",
           "structure": "\"System Settings\"",
           "optional": false,
-          "description": "Single DocType name."
+          "description": "The Single DocType name."
         },
         {
           "name": "fieldname",
           "type": "str",
-          "structure": "\"currency\"",
+          "structure": "\"backup_limit\"",
           "optional": false,
-          "description": "Field name to read."
+          "description": "Fieldname to fetch."
+        },
+        {
+          "name": "cache",
+          "type": "bool",
+          "optional": true,
+          "default": "True",
+          "description": "Whether to read from memory cache for maximum speed."
         }
       ]
     },
@@ -1118,28 +1393,30 @@
       "module": "frappe.db",
       "signature": "frappe.db.set_single_value(doctype: str, fieldname: str, value: Any)",
       "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Updates a field value in a Single DocType.",
-      "example": "frappe.db.set_single_value(\"System Settings\", \"currency\", \"USD\")",
+      "returnDescription": "None",
+      "docstring": "Updates a single setting/field value in a Single DocType (stored in `tabSingles`) directly in the database without instantiating the full document.",
+      "example": "# Update system maintenance mode or backup settings programmatically:\nfrappe.db.set_single_value(\"System Settings\", \"allow_error_traceback\", 0)\nfrappe.db.set_single_value(\"Global Defaults\", \"default_currency\", \"USD\")",
       "parameters": [
         {
           "name": "doctype",
           "type": "str",
           "structure": "\"System Settings\"",
           "optional": false,
-          "description": "Single DocType name."
+          "description": "Name of the Single DocType."
         },
         {
           "name": "fieldname",
           "type": "str",
+          "structure": "\"allow_error_traceback\"",
           "optional": false,
-          "description": "Field name."
+          "description": "Fieldname to update."
         },
         {
           "name": "value",
           "type": "Any",
+          "structure": "0",
           "optional": false,
-          "description": "New value to write."
+          "description": "New value to store."
         }
       ]
     },
@@ -1171,25 +1448,25 @@
     {
       "name": "count",
       "module": "frappe.db",
-      "signature": "frappe.db.count(doctype: str, filters: dict | list = None) -> int",
+      "signature": "frappe.db.count(doctype: str, filters: dict | list = None, distinct: bool = False) -> int",
       "returnType": "int",
-      "returnDescription": "Total number of matching records in database.",
-      "docstring": "Executes a fast `SELECT COUNT(*)` query in the database.",
-      "example": "total_active = frappe.db.count(\"Employee\", {\"status\": \"Active\"})",
+      "returnDescription": "Total number of rows matching the query.",
+      "docstring": "Executes a high-speed `SELECT COUNT(*)` query in SQL to count records matching your filters. Always use `frappe.db.count()` instead of `len(frappe.get_all())` because it does not load records into Python memory.",
+      "example": "# 1. Count active employees in Sales:\nsales_count = frappe.db.count(\"Employee\", {\"department\": \"Sales\", \"status\": \"Active\"})\n\n# 2. Count overdue invoices:\noverdue_count = frappe.db.count(\"Sales Invoice\", filters=[\n    [\"outstanding_amount\", \">\", 0],\n    [\"due_date\", \"<\", frappe.utils.today()]\n])",
       "parameters": [
         {
           "name": "doctype",
           "type": "str",
           "structure": "\"Employee\"",
           "optional": false,
-          "description": "Target DocType name."
+          "description": "DocType name to count rows in."
         },
         {
           "name": "filters",
           "type": "dict | list",
           "structure": "{\"status\": \"Active\"}",
           "optional": true,
-          "description": "Filter criteria dictionary."
+          "description": "Filter conditions to match."
         }
       ]
     },
@@ -1292,18 +1569,18 @@
       "module": "frappe.db",
       "signature": "frappe.db.savepoint(save_point_name: str)",
       "returnType": "None",
-      "docstring": "Creates a transactional savepoint in current database transaction allowing partial rollbacks.",
-      "example": "frappe.db.savepoint('before_sync')\ntry:\n    # actions\nexcept Exception:\n    frappe.db.rollback(save_point='before_sync')",
+      "docstring": "Creates a named database transaction savepoint. Allows you to partially roll back nested operations inside a `try...except` block without discarding the outer database transaction.",
+      "example": "savepoint_id = \"process_order_batch\"\nfrappe.db.savepoint(savepoint_id)\n\ntry:\n    # Attempt critical nested operation:\n    process_third_party_payment(doc)\n    frappe.db.release_savepoint(savepoint_id)\nexcept Exception as e:\n    # Roll back only the payment attempt, keeping previous order changes:\n    frappe.db.rollback(save_point=savepoint_id)\n    doc.db_set(\"payment_error\", str(e))",
       "parameters": [
         {
           "name": "save_point_name",
           "type": "str",
-          "structure": "\"my_savepoint\"",
+          "structure": "\"sp_batch_1\"",
           "optional": false,
-          "description": "Identifier name for savepoint"
+          "description": "Unique identifier string for this savepoint."
         }
       ],
-      "returnDescription": "None (Creates transactional savepoint)."
+      "returnDescription": "Sets a transaction savepoint."
     },
     {
       "name": "release_savepoint",
@@ -1391,27 +1668,20 @@
     {
       "name": "multisql",
       "module": "frappe.db",
-      "signature": "frappe.db.multisql(query_dict: dict, values: tuple | dict = None) -> list",
+      "signature": "frappe.db.multisql(query_dict: dict, values: dict | tuple = None, as_dict: bool = True) -> list",
       "returnType": "list",
-      "docstring": "Executes database-specific queries (mariadb vs postgres).",
-      "example": "frappe.db.multisql({'mariadb': 'SELECT NOW()', 'postgres': 'SELECT current_timestamp'})",
+      "docstring": "Executes database dialect-specific SQL queries. Lets you provide separate query strings for MariaDB and PostgreSQL to support both databases seamlessly in your custom Frappe apps.",
+      "example": "# Run database-specific date aggregation query:\nresults = frappe.db.multisql({\n    \"mariadb\": \"SELECT DATE_FORMAT(creation, '%Y-%m') as period, sum(grand_total) FROM `tabSales Invoice` GROUP BY period\",\n    \"postgres\": \"SELECT TO_CHAR(creation, 'YYYY-MM') as period, sum(grand_total) FROM `tabSales Invoice` GROUP BY period\"\n}, as_dict=True)",
       "parameters": [
         {
           "name": "query_dict",
           "type": "dict",
           "structure": "{\"mariadb\": \"SELECT ...\", \"postgres\": \"SELECT ...\"}",
           "optional": false,
-          "description": "Dictionary mapping DB engine ('mariadb', 'postgres') to engine-specific SQL query string."
-        },
-        {
-          "name": "values",
-          "type": "tuple | dict",
-          "structure": "(\"Active\",)",
-          "optional": true,
-          "description": "Parameter values safely parameterized into the query."
+          "description": "Dictionary mapping database dialect (\"mariadb\", \"postgres\") to SQL strings."
         }
       ],
-      "returnDescription": "Query result list matching active database engine."
+      "returnDescription": "Query result from the active database dialect."
     },
     {
       "name": "add_index",
@@ -1444,6 +1714,63 @@
         }
       ],
       "returnDescription": "None (Creates database index)."
+    },
+    {
+      "name": "get_descendants",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_descendants(doctype: str, name: str) -> list[str]",
+      "returnType": "list[str]",
+      "returnDescription": "List of primary key names of all child nodes in tree hierarchy.",
+      "docstring": "Returns all descendant child records for a given node in a NestedSet / Tree DocType (e.g. Chart of Accounts, Territory, Item Group, Department). Uses fast left/right nested set index indexing (`lft` and `rgt`).",
+      "example": "# Fetch all child accounts under \"Current Assets\":\nchild_accounts = frappe.db.get_descendants(\"Account\", \"Current Assets - ACME\")\n# Query all transactions belonging to any child account:\nbalances = frappe.get_all(\"GL Entry\", filters={\"account\": [\"in\", child_accounts]})",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Account\"",
+          "optional": false,
+          "description": "Tree DocType name."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"Current Assets - ACME\"",
+          "optional": false,
+          "description": "Parent node name."
+        }
+      ]
+    },
+    {
+      "name": "bulk_insert",
+      "module": "frappe.db",
+      "signature": "frappe.db.bulk_insert(doctype: str, fields: list[str], values: list[list | tuple], ignore_duplicates: bool = False)",
+      "returnType": "None",
+      "returnDescription": "Inserts batch rows directly into MySQL/PostgreSQL table.",
+      "docstring": "Executes a high-performance batch SQL multi-row insert directly into the DocType table. It bypasses document controller hooks and validations, making it up to 100x faster for importing thousands of records or streaming sensor/log data.",
+      "example": "# Batch insert 500 log rows in a single SQL query:\nfields = [\"name\", \"timestamp\", \"log_level\", \"message\"]\nvalues = [\n    [frappe.generate_hash(length=10), frappe.utils.now_datetime(), \"INFO\", f\"Task {i} finished\"]\n    for i in range(500)\n]\nfrappe.db.bulk_insert(\"Activity Log\", fields, values, ignore_duplicates=True)",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Activity Log\"",
+          "optional": false,
+          "description": "Target DocType table."
+        },
+        {
+          "name": "fields",
+          "type": "list[str]",
+          "structure": "[\"name\", \"creation\", \"title\"]",
+          "optional": false,
+          "description": "Column names to insert."
+        },
+        {
+          "name": "values",
+          "type": "list[list]",
+          "structure": "[[\"LOG-01\", \"2026-01-01\", \"Title 1\"]]",
+          "optional": false,
+          "description": "Matrix of row values to insert."
+        }
+      ]
     }
   ],
   "Document": [
@@ -1500,21 +1827,21 @@
     {
       "name": "on_submit",
       "module": "Document",
-      "signature": "doc.on_submit() -> None",
+      "signature": "def on_submit(self):",
       "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Lifecycle Hook: Triggered when a submittable document is submitted (docstatus changes from 0 to 1). Use this to create General Ledger entries or post inventory.",
-      "example": "def on_submit(self):\n    self.make_gl_entries()",
+      "returnDescription": "Controller hook called when document is submitted (docstatus becomes 1).",
+      "docstring": "Lifecycle controller hook executed immediately when a submittable document (`is_submittable = 1`) is submitted by the user. Use this to create General Ledger entries, deduct stock balances, update linked documents, or send official notifications.",
+      "example": "class SalesInvoice(Document):\n    def on_submit(self):\n        # 1. Post accounting ledger entries:\n        self.make_gl_entries()\n        # 2. Deduct inventory from warehouse:\n        self.update_stock_ledger()\n        # 3. Notify customer:\n        frappe.sendmail(\n            recipients=[self.contact_email],\n            subject=f\"Invoice {self.name} Confirmed\",\n            message=\"Thank you! Your payment invoice is attached.\"\n        )",
       "parameters": []
     },
     {
       "name": "on_cancel",
       "module": "Document",
-      "signature": "doc.on_cancel() -> None",
+      "signature": "def on_cancel(self):",
       "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Lifecycle Hook: Triggered when a submitted document is cancelled (docstatus changes from 1 to 2). Use to reverse GL entries.",
-      "example": "def on_cancel(self):\n    self.reverse_gl_entries()",
+      "returnDescription": "Controller hook called when document is cancelled (docstatus becomes 2).",
+      "docstring": "Lifecycle controller hook executed when a submitted document is cancelled by the user. Use this to reverse accounting GL entries, return reserved stock back to the warehouse, and unlink dependent transactions.",
+      "example": "class SalesInvoice(Document):\n    def on_cancel(self):\n        # 1. Reverse accounting transactions:\n        self.make_gl_entries(cancel=True)\n        # 2. Return deducted stock back to inventory:\n        self.update_stock_ledger(cancel=True)\n        frappe.msgprint(f\"Invoice {self.name} cancelled and ledger entries reversed.\")",
       "parameters": []
     },
     {
@@ -1593,78 +1920,93 @@
     {
       "name": "append",
       "module": "Document",
-      "signature": "doc.append(table_fieldname: str, row_values: dict = None) -> Document",
-      "returnType": "Document",
-      "returnDescription": "The newly added child table row document.",
-      "docstring": "Adds a new child table row to a Table field on the document.",
-      "example": "doc.append(\"items\", {\"item_code\": \"LAPTOP-01\", \"qty\": 2, \"rate\": 1200})",
+      "signature": "doc.append(table_fieldname: str, value: dict = None) -> Document",
+      "returnType": "Document (Child Record)",
+      "returnDescription": "The newly created child table row object.",
+      "docstring": "Appends a brand new row to a child table. It automatically assigns the correct row index (`idx`), links the parent record, and initializes default values. You can pass a dictionary of field values directly or modify the returned child row object.",
+      "example": "# Method 1: Append with a dictionary of values\ndoc.append(\"items\", {\n    \"item_code\": \"ITEM-001\",\n    \"qty\": 5,\n    \"rate\": 120.00\n})\n\n# Method 2: Append and modify the returned row object directly\nnew_row = doc.append(\"items\")\nnew_row.item_code = \"ITEM-002\"\nnew_row.qty = 10\nnew_row.rate = 50.00",
       "parameters": [
         {
           "name": "table_fieldname",
           "type": "str",
           "structure": "\"items\"",
           "optional": false,
-          "description": "The fieldname of the child Table on this document."
+          "description": "Fieldname of the Table / Child Table in the parent DocType."
         },
         {
-          "name": "row_values",
+          "name": "value",
           "type": "dict",
-          "structure": "{\"item_code\": \"LAPTOP-01\", \"qty\": 2, \"rate\": 1200}",
+          "structure": "{\"item_code\": \"RAW-01\", \"qty\": 2}",
           "optional": true,
-          "description": "Dictionary of field values for the child row."
+          "description": "Dictionary of field values to set on the new child row."
         }
       ]
     },
     {
       "name": "db_set",
       "module": "Document",
-      "signature": "doc.db_set(fieldname: str | dict, value: any = None, update_modified: bool = True) -> None",
+      "signature": "doc.db_set(fieldname: str | dict, value: Any = None, update_modified: bool = True, notify: bool = False)",
       "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Directly updates a single field on this document in the database and updates the current in-memory instance without calling full validation hooks.",
-      "example": "self.db_set(\"status\", \"Approved\")",
+      "returnDescription": "None",
+      "docstring": "Directly and instantly updates specific fields in the database for this document. Unlike `doc.save()`, `db_set` does NOT trigger lifecycle hooks (`validate`, `before_save`, `on_update`), making it very fast for updating statuses, flags, or background task outcomes without triggering full document validation rules.",
+      "example": "# 1. Update a single field instantly:\ndoc.db_set(\"workflow_state\", \"Approved\")\n\n# 2. Update multiple fields at once without updating modified timestamp:\ndoc.db_set({\n    \"last_sync_datetime\": frappe.utils.now_datetime(),\n    \"sync_status\": \"Completed\"\n}, update_modified=False)",
       "parameters": [
         {
           "name": "fieldname",
           "type": "str | dict",
-          "structure": "\"status\" | {\"status\": \"Closed\"}",
+          "structure": "\"status\" OR {\"status\": \"Closed\", \"closed_by\": \"john@example.com\"}",
           "optional": false,
-          "description": "Fieldname or dictionary of fields to update directly in database."
+          "description": "Field name as string, OR a dictionary mapping multiple field names to their new values."
         },
         {
           "name": "value",
-          "type": "any",
+          "type": "Any",
           "structure": "\"Approved\"",
           "optional": true,
-          "description": "New value to write (omit if fieldname is a dict)."
+          "description": "The value to assign (when passing a string in the first argument)."
         },
         {
           "name": "update_modified",
           "type": "bool",
           "optional": true,
           "default": "True",
-          "description": "Update modified timestamp on record."
+          "description": "If True, updates the `modified` and `modified_by` audit fields of the document."
         }
       ]
     },
     {
       "name": "as_dict",
       "module": "Document",
-      "signature": "doc.as_dict() -> dict",
+      "signature": "doc.as_dict(no_nulls: bool = False, no_default_fields: bool = False, convert_dates_to_str: bool = False) -> dict",
       "returnType": "dict",
-      "returnDescription": "A pure Python dictionary containing all document fields and child tables.",
-      "docstring": "Converts this document and all its child tables into a standard Python dictionary.",
-      "example": "data = doc.as_dict()",
-      "parameters": []
+      "returnDescription": "Python dictionary containing all document fields and child tables.",
+      "docstring": "Converts the entire Document controller instance and its child tables into a standard, clean Python dictionary. Ideal for returning data in REST API responses, serializing to JSON, or passing into templates.",
+      "example": "# 1. Convert document to dictionary for API response:\nemployee_doc = frappe.get_doc(\"Employee\", \"EMP-001\")\ndata = employee_doc.as_dict(no_nulls=True)\n\n# 2. Clean dict without internal default fields (creation, modified, etc.):\nclean_data = employee_doc.as_dict(no_default_fields=True)",
+      "parameters": [
+        {
+          "name": "no_nulls",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, strips keys with None / null values from the resulting dictionary."
+        },
+        {
+          "name": "no_default_fields",
+          "type": "bool",
+          "optional": true,
+          "default": "False",
+          "description": "If True, omits standard metadata fields like `name`, `owner`, `creation`, `modified`."
+        }
+      ]
     },
     {
       "name": "is_new",
       "module": "Document",
       "signature": "doc.is_new() -> bool",
       "returnType": "bool",
-      "returnDescription": "True if document is newly created and not yet committed in database.",
-      "docstring": "Checks whether the document is a brand new unsaved record.",
-      "example": "if self.is_new():\n    self.send_welcome_notification()",
+      "returnDescription": "True if document has never been saved into the database; False otherwise.",
+      "docstring": "Checks whether the document is an in-memory new record that has not yet been committed to the database. Internally checks `doc.__islocal` and `doc.get(\"__islocal\")`.",
+      "example": "class PurchaseOrder(Document):\n    def validate(self):\n        if self.is_new():\n            frappe.msgprint(\"Welcome! Creating a brand new Purchase Order.\")\n        else:\n            frappe.msgprint(\"Editing an existing Purchase Order record.\")",
       "parameters": []
     },
     {
@@ -1680,36 +2022,36 @@
     {
       "name": "add_comment",
       "module": "Document",
-      "signature": "doc.add_comment(comment_type: str = 'Comment', text: str = None) -> Document",
-      "returnType": "Document",
-      "docstring": "Adds timeline comment to document.",
-      "example": "doc.add_comment('Comment', text='Approved by department head')",
+      "signature": "doc.add_comment(comment_type: str = \"Comment\", text: str = None, comment_by: str = None) -> Document",
+      "returnType": "Document (Comment)",
+      "docstring": "Adds an activity timeline note, mention, or system comment to this document. Comments appear in the sidebar/timeline of the document in Frappe Desk.",
+      "example": "# 1. Add a user discussion comment:\ndoc = frappe.get_doc(\"Lead\", \"LEAD-2026-0001\")\ndoc.add_comment(\"Comment\", text=\"Spoke with client. They requested a quote for 50 units.\")\n\n# 2. Add an automated system workflow note:\ndoc.add_comment(\"Workflow\", text=\"Document auto-approved based on Credit Rating A+\")",
       "parameters": [
         {
           "name": "comment_type",
           "type": "str",
-          "structure": "\"Comment\" | \"Workflow\" | \"Label\"",
+          "structure": "\"Comment\" | \"Workflow\" | \"Label\" | \"Like\"",
           "optional": true,
-          "default": "Comment",
-          "description": "Classification type of comment."
+          "default": "\"Comment\"",
+          "description": "Type of timeline comment to create."
         },
         {
           "name": "text",
           "type": "str",
-          "structure": "\"Order approved by finance team.\"",
+          "structure": "\"Followed up via phonecall with customer.\"",
           "optional": false,
-          "description": "Comment body text."
+          "description": "The comment text or markdown message to display on the timeline."
         }
       ],
-      "returnDescription": "Created Comment Document."
+      "returnDescription": "The created Comment document instance."
     },
     {
       "name": "add_tag",
       "module": "Document",
       "signature": "doc.add_tag(tag: str)",
       "returnType": "None",
-      "docstring": "Attaches a tag to document.",
-      "example": "doc.add_tag('VIP')",
+      "docstring": "Attaches a color-coded tag to this document for filtering, categorization, and Kanban grouping in Frappe Desk. If the tag does not exist globally, Frappe automatically creates it in `__global_tags`.",
+      "example": "doc = frappe.get_doc(\"Lead\", \"LEAD-00012\")\ndoc.add_tag(\"High Priority\")\ndoc.add_tag(\"Q4-Deal\")",
       "parameters": [
         {
           "name": "tag",
@@ -1723,64 +2065,46 @@
     {
       "name": "run_method",
       "module": "Document",
-      "signature": "doc.run_method(method: str, *args, **kwargs) -> any",
+      "signature": "doc.run_method(method: str, *args, **kwargs) -> Any",
       "returnType": "Any",
-      "docstring": "Executes controller method with lifecycle hooks.",
-      "example": "doc.run_method('calculate_totals')",
+      "docstring": "Dynamically invokes a method defined on the DocType controller class or Server Scripts. Also triggers document event hooks configured in `hooks.py` (doc_events). Useful when you need to execute business logic dynamically by method name.",
+      "example": "# 1. Dynamically run a method on an invoice:\ndoc.run_method(\"calculate_taxes_and_totals\")\n\n# 2. Run a custom processing method with parameters:\nresult = doc.run_method(\"generate_qr_code\", format=\"PNG\", size=256)",
       "parameters": [
         {
           "name": "method",
           "type": "str",
-          "structure": "\"recalculate_totals\"",
+          "structure": "\"calculate_totals\"",
           "optional": false,
-          "description": "Controller method name to execute on this document."
-        },
-        {
-          "name": "args",
-          "type": "tuple",
-          "optional": true,
-          "description": "Positional arguments passed to method."
-        },
-        {
-          "name": "kwargs",
-          "type": "dict",
-          "optional": true,
-          "description": "Keyword arguments passed to method."
+          "description": "Name of the method to execute on the Document instance."
         }
       ],
-      "returnDescription": "Return value of the executed controller method."
+      "returnDescription": "The return value of the executed controller method or Server Script hook."
     },
     {
       "name": "queue_action",
       "module": "Document",
-      "signature": "doc.queue_action(action: str, **kwargs) -> str",
+      "signature": "doc.queue_action(action: str, **kwargs)",
       "returnType": "None",
-      "docstring": "Queues submit/cancel/update document action in background worker.",
-      "example": "doc.queue_action('submit')",
+      "docstring": "Enqueues standard document submission (`submit`) or cancellation (`cancel`) actions into the background Redis worker queue. Use this for heavy documents (e.g. Invoices with hundreds of child rows or complex stock ledgers) to prevent HTTP request timeouts in the browser.",
+      "example": "# Queue a heavy invoice for background submission:\ninvoice = frappe.get_doc(\"Sales Invoice\", \"ACC-SINV-2026-00042\")\ninvoice.queue_action(\"submit\", timeout=600)\nfrappe.msgprint(\"Invoice submitted in the background. You will be notified once complete.\")",
       "parameters": [
         {
           "name": "action",
           "type": "str",
           "structure": "\"submit\" | \"cancel\"",
           "optional": false,
-          "description": "Document action to execute in background worker queue."
-        },
-        {
-          "name": "kwargs",
-          "type": "dict",
-          "optional": true,
-          "description": "Additional parameters for background job execution."
+          "description": "Action to execute asynchronously in the background queue."
         }
       ],
-      "returnDescription": "Background job ID queued in Redis."
+      "returnDescription": "Enqueues background task; returns None."
     },
     {
       "name": "has_value_changed",
       "module": "Document",
       "signature": "doc.has_value_changed(fieldname: str) -> bool",
       "returnType": "bool",
-      "docstring": "Returns True if field value was modified in current transaction compared to database state.",
-      "example": "if self.has_value_changed('status'):\n    self.notify_status_change()",
+      "docstring": "Checks if a field's value has changed during the current save cycle by comparing against `get_doc_before_save()`. Returns True if modified, False otherwise.",
+      "example": "class Customer(Document):\n    def validate(self):\n        if self.has_value_changed(\"credit_limit\"):\n            frappe.msgprint(f\"Credit limit updated to {self.credit_limit}. Emailing financial controller.\")",
       "parameters": [
         {
           "name": "fieldname",
@@ -1791,6 +2115,16 @@
         }
       ],
       "returnDescription": "True if field value changed in memory vs database."
+    },
+    {
+      "name": "get_doc_before_save",
+      "module": "Document",
+      "signature": "doc.get_doc_before_save() -> Document | None",
+      "returnType": "Document | None",
+      "returnDescription": "Previous snapshot of the document prior to current changes, or None for newly created records.",
+      "docstring": "Returns the previous in-memory state of the document as it was before the user made edits. Essential for detecting changed fields, auditing modifications, and calculating balance differentials in `validate()` or `before_save()`.",
+      "example": "class SalesOrder(Document):\n    def validate(self):\n        old_doc = self.get_doc_before_save()\n        if old_doc and old_doc.delivery_status != self.delivery_status:\n            frappe.msgprint(f\"Delivery status changed from {old_doc.delivery_status} to {self.delivery_status}\")",
+      "parameters": []
     }
   ],
   "frappe.utils": [
@@ -1915,23 +2249,32 @@
     {
       "name": "money_in_words",
       "module": "frappe.utils",
-      "signature": "frappe.utils.money_in_words(number: float | int, currency: str = None) -> str",
+      "signature": "frappe.utils.money_in_words(number: float | int, main_currency: str = None, fraction_currency: str = None) -> str",
       "returnType": "str",
-      "returnDescription": "English text representation of currency amount.",
-      "docstring": "Converts a numeric amount into English words with currency prefix and cent/paise suffixes.",
-      "example": "text = frappe.utils.money_in_words(1500.50, \"USD\")",
+      "returnDescription": "Capitalized string representation of monetary amount in words.",
+      "docstring": "Converts a numeric monetary amount into full written English words formatted for financial checks, official receipts, and invoices (e.g. \"USD One Thousand Two Hundred Fifty and Fifty Cents Only\").",
+      "example": "# 1. Convert invoice total to words:\nwords = frappe.utils.money_in_words(1250.50, main_currency=\"USD\", fraction_currency=\"Cents\")\n# Output: \"USD One Thousand Two Hundred Fifty and Fifty Cents Only.\"\n\n# 2. In INR format:\ninr_words = frappe.utils.money_in_words(50000, \"INR\", \"Paise\")\n# Output: \"INR Fifty Thousand Only.\"",
       "parameters": [
         {
           "name": "number",
           "type": "float | int",
+          "structure": "1250.50",
           "optional": false,
-          "description": "Numeric money amount."
+          "description": "The numeric currency amount."
         },
         {
-          "name": "currency",
+          "name": "main_currency",
           "type": "str",
+          "structure": "\"USD\" | \"EUR\" | \"INR\"",
           "optional": true,
-          "description": "Currency name (e.g. 'USD', 'INR')."
+          "description": "Name of the primary currency unit."
+        },
+        {
+          "name": "fraction_currency",
+          "type": "str",
+          "structure": "\"Cents\" | \"Paise\"",
+          "optional": true,
+          "description": "Name of the fractional / decimal currency unit."
         }
       ]
     },
@@ -2149,28 +2492,28 @@
     {
       "name": "safe_json_loads",
       "module": "frappe.utils",
-      "signature": "frappe.utils.safe_json_loads(data: str, default: any = None) -> dict | list | any",
+      "signature": "frappe.utils.safe_json_loads(val: str, default: Any = None) -> Any",
       "returnType": "Any",
-      "docstring": "Safely parses JSON string without raising exceptions.",
-      "example": "parsed = safe_json_loads(payload, default={})",
+      "docstring": "Safely parses a JSON string into Python objects (dict/list) without raising exceptions if the string is malformed, empty, or already parsed.",
+      "example": "# Safely parse incoming webhook payload or request body:\nraw_body = frappe.request.get_data(as_text=True)\ndata = frappe.utils.safe_json_loads(raw_body, default={})\nuser_id = data.get(\"user_id\")",
       "parameters": [
         {
-          "name": "data",
+          "name": "val",
           "type": "str",
-          "structure": "\"{\\\"key\\\": \\\"value\\\"}\"",
+          "structure": "'{\"status\": \"ok\", \"code\": 200}'",
           "optional": false,
-          "description": "Raw JSON string to parse."
+          "description": "JSON formatted string to parse."
         },
         {
           "name": "default",
-          "type": "any",
+          "type": "Any",
           "structure": "{}",
           "optional": true,
           "default": "None",
-          "description": "Fallback return value if JSON parsing fails."
+          "description": "Fallback value returned if parsing fails."
         }
       ],
-      "returnDescription": "Parsed Python dictionary/list or default fallback."
+      "returnDescription": "Parsed Python dictionary/list, or the fallback default on parse failure."
     }
   ],
   "frappe.permissions": [
@@ -2250,27 +2593,163 @@
   ],
   "frappe.model.naming": [
     {
-      "name": "make_autoname",
+      "name": "getseries",
       "module": "frappe.model.naming",
-      "signature": "frappe.model.naming.make_autoname(key: str, doctype: str = None) -> str",
+      "signature": "frappe.model.naming.getseries(key: str, digits: int = None, doctype: str = None, step: int = 1) -> str",
       "returnType": "str",
-      "returnDescription": "Unique generated naming series ID.",
-      "docstring": "Generates a unique document naming ID based on a series pattern (e.g. `ACC-SINV-.YYYY.-.#####`).",
-      "example": "self.name = frappe.model.naming.make_autoname(\"SAL-SLIP-.YYYY.-.#####\", self.doctype)",
+      "returnDescription": "The next formatted sequential number as a string (padded with leading zeros if digits is provided).",
+      "docstring": "Atomically increments and returns the next sequential number for a given naming series prefix from the database table `tabSeries`. Because it updates the database counter atomically with row-level locks, it is 100% safe from race conditions and duplicate IDs when multiple users or background jobs generate documents simultaneously.",
+      "example": "# 1. Basic usage - fetch the next 5-digit number (e.g. '00001', '00002'):\nfrom frappe.model.naming import getseries\n\nnext_seq = getseries(\"INV-2026-\", 5)\nfull_invoice_id = f\"INV-2026-{next_seq}\"\n# Result: \"INV-2026-00001\"\n\n# 2. Inside a DocType custom autoname() controller method:\nfrom frappe.model.naming import getseries\nfrom frappe.model.document import Document\n\nclass SalesContract(Document):\n    def autoname(self):\n        year = frappe.utils.nowdate()[:4]\n        prefix = f\"CNT-{self.company_abbr}-{year}-\"\n        # Generate next 4-digit sequence: \"0001\", \"0002\", etc.\n        self.name = f\"{prefix}{getseries(prefix, 4)}\"",
       "parameters": [
         {
           "name": "key",
           "type": "str",
-          "structure": "\"INV-.YYYY.-.#####\"",
+          "structure": "\"INV-2026-\"",
           "optional": false,
-          "description": "Naming series pattern or format string."
+          "description": "The prefix pattern identifying the sequence counter in `tabSeries` table (e.g. \"ACC-SINV-\", \"EMP-2026-\")."
+        },
+        {
+          "name": "digits",
+          "type": "int",
+          "structure": "5",
+          "optional": true,
+          "description": "Number of digits to pad with leading zeros. E.g. digits=5 formats 1 as \"00001\". If None, returns raw string representation of the integer."
         },
         {
           "name": "doctype",
           "type": "str",
           "structure": "\"Sales Invoice\"",
           "optional": true,
-          "description": "Reference DocType name."
+          "description": "Optional DocType name linked to this naming series."
+        },
+        {
+          "name": "step",
+          "type": "int",
+          "structure": "1",
+          "optional": true,
+          "default": "1",
+          "description": "Amount to increment the counter by (default is 1)."
+        }
+      ]
+    },
+    {
+      "name": "make_autoname",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.make_autoname(key: str, doctype: str = None, doc: Document = None) -> str",
+      "returnType": "str",
+      "returnDescription": "Unique generated naming ID formatted according to the series pattern.",
+      "docstring": "Generates a unique document ID based on a standard Frappe series pattern (e.g. `ACC-SINV-.YYYY.-.#####` or `.FY.`). It automatically evaluates year (.YYYY.), month (.MM.), date (.DD.), fiscal year (.FY.), and digit padding (.#####).",
+      "example": "# 1. Dynamic series with year and 5-digit counter:\nnew_id = frappe.model.naming.make_autoname(\"SAL-SLIP-.YYYY.-.#####\", \"Salary Slip\")\n# Result: \"SAL-SLIP-2026-00001\"\n\n# 2. In custom autoname() with field substitution:\nclass CustomOrder(Document):\n    def autoname(self):\n        # Format: ORD-CUSTNAME-00001\n        self.name = frappe.model.naming.make_autoname(f\"ORD-{self.customer_code}-.#####\", self.doctype, self)",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"ACC-SINV-.YYYY.-.#####\"",
+          "optional": false,
+          "description": "Naming series format string containing tags like .YYYY., .MM., .DD., .FY., and .##### for numbers."
+        },
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "description": "Reference DocType name for tracking the series."
+        },
+        {
+          "name": "doc",
+          "type": "Document",
+          "optional": true,
+          "description": "Document instance used for dynamic field replacements in naming format strings."
+        }
+      ]
+    },
+    {
+      "name": "revert_series_if_last",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.revert_series_if_last(key: str, name: str, doc: Document = None) -> None",
+      "returnType": "None",
+      "returnDescription": "Does not return a value; decrements counter in database if applicable.",
+      "docstring": "Rolls back / decrements the sequential counter in `tabSeries` if the document being cancelled or deleted was the most recent (last) document created in that series. This prevents gaps in numbering sequences when the latest created document is immediately deleted.",
+      "example": "# Used inside on_trash() or on_cancel() hooks:\nfrom frappe.model.naming import revert_series_if_last\n\nclass SalesInvoice(Document):\n    def on_trash(self):\n        # Revert counter if this invoice was the last one generated\n        if self.naming_series:\n            prefix = self.naming_series.replace(\".#####\", \"\")\n            revert_series_if_last(prefix, self.name)",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"ACC-SINV-2026-\"",
+          "optional": false,
+          "description": "The series prefix key in `tabSeries` to check and potentially decrement."
+        },
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"ACC-SINV-2026-00042\"",
+          "optional": false,
+          "description": "The document name being deleted or cancelled."
+        },
+        {
+          "name": "doc",
+          "type": "Document",
+          "optional": true,
+          "description": "The document instance being discarded."
+        }
+      ]
+    },
+    {
+      "name": "parse_naming_series",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.parse_naming_series(parts: list[str] | str, doc: Document = None, pattern: str = None) -> str",
+      "returnType": "str",
+      "returnDescription": "Parsed naming prefix string with date and field values evaluated.",
+      "docstring": "Evaluates dynamic tokens in a naming series format string such as `.YYYY.` (4-digit year), `.YY.` (2-digit year), `.MM.` (2-digit month), `.DD.` (day of month), `.FY.` (fiscal year), and `{field_name}` (field values from document).",
+      "example": "from frappe.model.naming import parse_naming_series\n\n# Parses date tokens against current date:\nprefix = parse_naming_series([\"INV-\", \".YYYY.\", \"-\", \".MM.\", \"-\"])\n# Result: \"INV-2026-09-\"",
+      "parameters": [
+        {
+          "name": "parts",
+          "type": "list[str] | str",
+          "structure": "[\"INV-\", \".YYYY.\", \"-\"]",
+          "optional": false,
+          "description": "List of series parts or raw format string with date tokens."
+        },
+        {
+          "name": "doc",
+          "type": "Document",
+          "optional": true,
+          "description": "Document instance to extract field values from if `{fieldname}` tokens exist."
+        }
+      ]
+    },
+    {
+      "name": "set_name_by_naming_series",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.set_name_by_naming_series(doc: Document) -> None",
+      "returnType": "None",
+      "returnDescription": "Sets doc.name directly on the document object.",
+      "docstring": "Sets `doc.name` automatically by evaluating `doc.naming_series`. If `naming_series` is not set, it falls back to the default series specified in the DocType definition.",
+      "example": "from frappe.model.naming import set_name_by_naming_series\n\nclass CustomDoc(Document):\n    def autoname(self):\n        set_name_by_naming_series(self)",
+      "parameters": [
+        {
+          "name": "doc",
+          "type": "Document",
+          "optional": false,
+          "description": "The document instance whose name needs to be assigned."
+        }
+      ]
+    },
+    {
+      "name": "get_default_naming_series",
+      "module": "frappe.model.naming",
+      "signature": "frappe.model.naming.get_default_naming_series(doctype: str) -> str",
+      "returnType": "str",
+      "returnDescription": "The first/default naming series prefix option configured for the DocType.",
+      "docstring": "Retrieves the default naming series pattern configured for a given DocType (from the `naming_series` select field options or Property Setter).",
+      "example": "from frappe.model.naming import get_default_naming_series\n\ndefault_series = get_default_naming_series(\"Sales Invoice\")\n# Result: \"ACC-SINV-.YYYY.-\"",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "The DocType name to query default series for."
         }
       ]
     }
@@ -2279,63 +2758,137 @@
     {
       "name": "get_value",
       "module": "frappe.cache",
-      "signature": "frappe.cache.get_value(key: str, generator: callable = None, expires_in_sec: int = None) -> any",
+      "signature": "frappe.cache.get_value(key: str, generator: callable = None, expires_in_sec: int = None) -> Any",
       "returnType": "Any",
-      "returnDescription": "Cached value from Redis memory.",
-      "docstring": "Retrieves a cached value from Redis memory. If not found, calls generator function to compute and cache the value.",
-      "example": "data = frappe.cache().get_value(\"my_custom_key\")",
+      "returnDescription": "Cached Python object/value or result from generator.",
+      "docstring": "Retrieves a value from Redis memory cache. If a generator function is provided, it executes the generator on cache miss, caches the returned result, and returns it.",
+      "example": "# 1. Simple lookup:\nstats = frappe.cache.get_value(\"monthly_sales_stats\")\n\n# 2. Cache-aside pattern with automatic generator on cache miss:\ndef calculate_sales():\n    return frappe.db.sql(\"SELECT sum(grand_total) FROM `tabSales Invoice` WHERE status='Paid'\", as_dict=True)\n\nstats = frappe.cache.get_value(\"paid_sales_total\", generator=calculate_sales, expires_in_sec=3600)",
       "parameters": [
         {
           "name": "key",
           "type": "str",
-          "structure": "\"my_app:cached_data\"",
+          "structure": "\"monthly_stats\"",
           "optional": false,
-          "description": "Redis cache key string."
+          "description": "Cache key string."
         },
         {
           "name": "generator",
           "type": "callable",
           "optional": true,
-          "description": "Callable function to compute and set cache value if key is missing."
+          "description": "Function to execute and populate cache if key does not exist in Redis."
         },
         {
           "name": "expires_in_sec",
           "type": "int",
           "structure": "3600",
           "optional": true,
-          "description": "Expiration time in seconds."
+          "description": "Time to live (TTL) in seconds before cache expires."
         }
       ]
     },
     {
       "name": "set_value",
       "module": "frappe.cache",
-      "signature": "frappe.cache.set_value(key: str, val: any, expires_in_sec: int = None) -> None",
+      "signature": "frappe.cache.set_value(key: str, val: Any, expires_in_sec: int = None)",
       "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Saves a value into Redis memory cache with optional expiration time.",
-      "example": "frappe.cache().set_value(\"my_custom_key\", data, expires_in_sec=3600)",
+      "returnDescription": "None",
+      "docstring": "Stores any JSON-serializable Python data (dict, list, string, number) in Redis cache with an optional expiration TTL.",
+      "example": "frappe.cache.set_value(\"active_promotions\", [{\"code\": \"SPRING50\", \"discount\": 50}], expires_in_sec=1800)",
       "parameters": [
         {
           "name": "key",
           "type": "str",
-          "structure": "\"my_app:cached_data\"",
+          "structure": "\"user_settings:101\"",
           "optional": false,
-          "description": "Redis cache key string."
+          "description": "Unique cache key."
         },
         {
           "name": "val",
-          "type": "any",
-          "structure": "{\"result\": 42}",
+          "type": "Any",
+          "structure": "{\"theme\": \"dark\", \"sidebar\": true}",
           "optional": false,
-          "description": "Value to serialize and store into Redis."
+          "description": "Python data to store in Redis."
         },
         {
           "name": "expires_in_sec",
           "type": "int",
           "structure": "3600",
           "optional": true,
-          "description": "Expiration TTL in seconds."
+          "description": "Expiration duration in seconds."
+        }
+      ]
+    },
+    {
+      "name": "hget",
+      "module": "frappe.cache",
+      "signature": "frappe.cache.hget(name: str, key: str, generator: callable = None) -> Any",
+      "returnType": "Any",
+      "returnDescription": "Value stored in Redis hash table.",
+      "docstring": "Fetches a specific field key from a Redis Hash table (`name`). Using Redis hashes is more memory-efficient when storing multiple related keys for a DocType or module.",
+      "example": "# Get cached tax template for a specific state:\ntax_rate = frappe.cache.hget(\"tax_rates_by_state\", \"California\")",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"tax_rates\"",
+          "optional": false,
+          "description": "Redis hash table name."
+        },
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"California\"",
+          "optional": false,
+          "description": "Field key inside hash table."
+        }
+      ]
+    },
+    {
+      "name": "hset",
+      "module": "frappe.cache",
+      "signature": "frappe.cache.hset(name: str, key: str, value: Any)",
+      "returnType": "None",
+      "returnDescription": "None",
+      "docstring": "Sets a field value inside a Redis Hash table.",
+      "example": "frappe.cache.hset(\"tax_rates_by_state\", \"California\", 0.0725)",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "str",
+          "structure": "\"tax_rates\"",
+          "optional": false,
+          "description": "Redis hash table name."
+        },
+        {
+          "name": "key",
+          "type": "str",
+          "structure": "\"California\"",
+          "optional": false,
+          "description": "Key inside the hash."
+        },
+        {
+          "name": "value",
+          "type": "Any",
+          "optional": false,
+          "description": "Data to store."
+        }
+      ]
+    },
+    {
+      "name": "delete_value",
+      "module": "frappe.cache",
+      "signature": "frappe.cache.delete_value(keys: str | list[str], user: bool = False)",
+      "returnType": "None",
+      "returnDescription": "None",
+      "docstring": "Deletes one or more cache keys from Redis memory to invalidate stale data.",
+      "example": "# Invalidate cache when settings are modified:\nfrappe.cache.delete_value(\"company_tax_rules\")",
+      "parameters": [
+        {
+          "name": "keys",
+          "type": "str | list[str]",
+          "structure": "\"cached_stats\" OR [\"key1\", \"key2\"]",
+          "optional": false,
+          "description": "Key name or list of keys to remove from Redis."
         }
       ]
     }
@@ -2344,18 +2897,18 @@
     {
       "name": "DocType",
       "module": "frappe.qb",
-      "signature": "frappe.qb.DocType(name: str) -> Table",
-      "returnType": "Table",
-      "returnDescription": "QueryBuilder Table reference object.",
-      "docstring": "Creates a typed table reference for PyPika QueryBuilder expressions.",
-      "example": "Employee = frappe.qb.DocType(\"Employee\")\nquery = (frappe.qb.from_(Employee)\n    .select(Employee.name, Employee.employee_name)\n    .where(Employee.status == \"Active\"))\nresults = query.run(as_dict=True)",
+      "signature": "frappe.qb.DocType(doctype: str) -> Table",
+      "returnType": "Table (PyPika Table reference)",
+      "returnDescription": "QueryBuilder table object with typed field references.",
+      "docstring": "Creates a QueryBuilder table representation for a DocType. Used to construct type-safe SQL queries with JOINs, nested WHERE criteria, GROUP BY, and aggregations without raw SQL string concatenation.",
+      "example": "# Build a type-safe SQL query with JOIN and WHERE filter:\ninv = frappe.qb.DocType(\"Sales Invoice\")\ncust = frappe.qb.DocType(\"Customer\")\n\nquery = (\n    frappe.qb.from_(inv)\n    .inner_join(cust)\n    .on(inv.customer == cust.name)\n    .select(inv.name, inv.grand_total, cust.customer_name, cust.territory)\n    .where(inv.docstatus == 1)\n    .where(inv.grand_total > 5000)\n    .orderby(inv.grand_total, order=frappe.qb.desc)\n)\nresults = query.run(as_dict=True)",
       "parameters": [
         {
-          "name": "name",
+          "name": "doctype",
           "type": "str",
-          "structure": "\"Employee\"",
+          "structure": "\"Sales Invoice\"",
           "optional": false,
-          "description": "Name of DocType table."
+          "description": "DocType name to build table schema for."
         }
       ]
     },
@@ -2364,15 +2917,16 @@
       "module": "frappe.qb",
       "signature": "frappe.qb.from_(table: Table | str) -> QueryBuilder",
       "returnType": "QueryBuilder",
-      "returnDescription": "Chainable QueryBuilder query.",
-      "docstring": "Starts building a type-safe SQL query expression.",
-      "example": "query = frappe.qb.from_(\"User\").select(\"name\", \"email\").where(User.enabled == 1)",
+      "returnDescription": "QueryBuilder chainable query object.",
+      "docstring": "Initiates a QueryBuilder `SELECT` query starting from the specified DocType table.",
+      "example": "# Query active users with count of assigned tasks:\nuser = frappe.qb.DocType(\"User\")\ntodo = frappe.qb.DocType(\"ToDo\")\n\nquery = (\n    frappe.qb.from_(user)\n    .left_join(todo).on(user.name == todo.allocated_to)\n    .select(user.name, user.full_name, frappe.query_builder.functions.Count(todo.name).as_(\"task_count\"))\n    .where(user.enabled == 1)\n    .groupby(user.name)\n)\ndata = query.run(as_dict=True)",
       "parameters": [
         {
           "name": "table",
           "type": "Table | str",
+          "structure": "frappe.qb.DocType(\"User\")",
           "optional": false,
-          "description": "Table instance or DocType name."
+          "description": "Target table or DocType instance to select from."
         }
       ]
     },
@@ -2381,15 +2935,16 @@
       "module": "frappe.qb",
       "signature": "frappe.qb.Table(table_name: str) -> Table",
       "returnType": "Table",
-      "docstring": "Creates QueryBuilder Table instance for raw SQL table.",
-      "example": "tab = frappe.qb.Table('tabEmployee')",
+      "returnDescription": "Raw table reference for database tables that are not standard DocTypes.",
+      "docstring": "Creates a QueryBuilder table reference for non-DocType tables (e.g. `tabSeries`, `tabSessions`, or custom system tables).",
+      "example": "series = frappe.qb.Table(\"tabSeries\")\nquery = frappe.qb.from_(series).select(series.name, series.current).where(series.name.like(\"INV-%\"))\nresults = query.run(as_dict=True)",
       "parameters": [
         {
           "name": "table_name",
           "type": "str",
-          "structure": "\"Sales Order\"",
+          "structure": "\"tabSeries\"",
           "optional": false,
-          "description": "DocType or table identifier to bind."
+          "description": "Raw SQL database table name."
         }
       ]
     }

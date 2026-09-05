@@ -134,6 +134,11 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
       const found = fList?.find((item: any) => item.name === word);
       if (found) return found;
     }
+    if (lineText.includes(`frappe.model.naming.${word}`) || lineText.includes(`naming.${word}`)) {
+      const nList = (pythonApis as any)['frappe.model.naming'];
+      const found = nList?.find((item: any) => item.name === word);
+      if (found) return found;
+    }
 
     if (isServer) {
       for (const group of ['frappe', 'frappe.db', 'frappe.utils', 'frappe.qb', 'frappe.cache', 'frappe.permissions', 'frappe.model.naming', 'frappe.session', 'frappe.local', 'frappe.flags', 'Document']) {

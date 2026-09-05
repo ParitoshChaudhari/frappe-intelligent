@@ -248,6 +248,24 @@ describe('Project Analysis, Custom Fields, Hover & Import Suggestions Test Suite
       assert.ok(labels.includes('get_roles'));
     });
 
+    it('should provide frappe.model.naming completions including getseries', () => {
+      const mockDoc: any = {
+        fileName: '/apps/frappe/frappe/naming.py',
+        getText: () => 'frappe.model.naming.',
+        lineAt: () => ({ text: 'frappe.model.naming.' }),
+      };
+
+      const position = new vscode.Position(0, 'frappe.model.naming.'.length);
+      const items = completionProvider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+      assert.ok(items.length > 0);
+      const labels = items.map((i) => i.label);
+      assert.ok(labels.includes('getseries'));
+      assert.ok(labels.includes('make_autoname'));
+      assert.ok(labels.includes('revert_series_if_last'));
+      assert.ok(labels.includes('parse_naming_series'));
+    });
+
     it('should provide frappe.router completions in JavaScript', () => {
       const mockDoc: any = {
         fileName: '/apps/frappe/frappe/public/js/desk.js',

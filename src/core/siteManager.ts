@@ -17,19 +17,73 @@ export class SiteManager {
     return SiteManager.instance;
   }
 
-  public discoverSites(benchRoot: string): string[] {
-    this.discoveredSites = [];
-    const sitesDir = path.join(benchRoot, 'sites');
-
-    if (fs.existsSync(sitesDir)) {
+  public findSitesDirectory(startDir: string): string | null {
+    let currentDir = startDir;
+    for (let i = 0; i < 6; i++) {
+      const candidate = path.join(currentDir, 'sites');
       try {
-        const entries = fs.readdirSync(sitesDir, { withFileTypes: true });
-        for (const entry of entries) {
-          if (entry.isDirectory() && entry.name !== 'assets' && !entry.name.startsWith('.')) {
-            const siteConfig = path.join(sitesDir, entry.name, 'site_config.json');
-            if (fs.existsSync(siteConfig) || entry.name.includes('.')) {
-              this.discoveredSites.push(entry.name);
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+          return candidate;
+        }
+      } catch {
+        // ignore
+      }
+
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) break;
+      currentDir = parentDir;
+    }
+    return null;
+  }
+
+  public discoverSites(startDir: string): string[] {
+    this.discoveredSites = [];
+    const sitesDir = this.findSitesDirectory(startDir);
+
+    if (sitesDir && fs.existsSync(sitesDir)) {
+      try {
+        const entries = fs.readdirSync(sitesDir);
+        for (const name of entries) {
+          if (name === 'assets' || name.startsWith('.') || name === '__pycache__' || name === 'apps.txt' || name === 'common_site_config.json' || name === 'currentsite.txt') {
+            continue;
+          }
+
+          const fullPath = path.join(sitesDir, name);
+          try {
+            const stat = fs.statSync(fullPath);
+            if (stat.isDirectory()) {
+              const siteConfig = path.join(fullPath, 'site_config.json');
+              const hasSiteConfig = fs.existsSync(siteConfig);
+              const hasPublicOrPrivate = fs.existsSync(path.join(fullPath, 'public')) || fs.existsSync(path.join(fullPath, 'private'));
+              const isDomainLike = name.includes('.');
+
+              if (hasSiteConfig || hasPublicOrPrivate || isDomainLike || entries.length > 0) {
+                if (!this.discoveredSites.includes(name)) {
+                  this.discoveredSites.push(name);
+                }
+              }
             }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Check currentsite.txt for active site configuration
+        const currentSiteTxt = path.join(sitesDir, 'currentsite.txt');
+        if (fs.existsSync(currentSiteTxt)) {
+          try {
+            const site = fs.readFileSync(currentSiteTxt, 'utf8').trim();
+            if (site) {
+              const sitePath = path.join(sitesDir, site);
+              if (fs.existsSync(sitePath) && !this.discoveredSites.includes(site)) {
+                this.discoveredSites.push(site);
+              }
+              if (this.discoveredSites.includes(site)) {
+                this.activeSite = site;
+              }
+            }
+          } catch {
+            // ignore
           }
         }
       } catch {
@@ -37,23 +91,8 @@ export class SiteManager {
       }
     }
 
-    if (this.discoveredSites.length > 0 && !this.activeSite) {
-      // Default to currentsite.txt if present
-      const currentSiteTxt = path.join(sitesDir, 'currentsite.txt');
-      if (fs.existsSync(currentSiteTxt)) {
-        try {
-          const site = fs.readFileSync(currentSiteTxt, 'utf8').trim();
-          if (this.discoveredSites.includes(site)) {
-            this.activeSite = site;
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      if (!this.activeSite) {
-        this.activeSite = this.discoveredSites[0];
-      }
+    if (this.discoveredSites.length > 0 && (!this.activeSite || !this.discoveredSites.includes(this.activeSite))) {
+      this.activeSite = this.discoveredSites[0];
     }
 
     return this.discoveredSites;
@@ -72,25 +111,47 @@ export class SiteManager {
   }
 
   public async promptSelectSite(): Promise<string | null> {
-    if (this.discoveredSites.length === 0) {
-      vscode.window.showInformationMessage('No Frappe sites found in sites/ directory.');
-      return null;
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (this.discoveredSites.length === 0 && workspaceFolders && workspaceFolders.length > 0) {
+      this.discoverSites(workspaceFolders[0].uri.fsPath);
     }
 
-    const items = this.discoveredSites.map((s) => ({
+    const items: Array<{ label: string; description?: string; isCustom?: boolean }> = this.discoveredSites.map((s) => ({
       label: s,
       description: s === this.activeSite ? '(Active)' : '',
     }));
+
+    items.push({
+      label: '$(plus) Enter Custom Site Name...',
+      description: 'Manually specify active site',
+      isCustom: true,
+    });
 
     const selected = await vscode.window.showQuickPick(items, {
       placeHolder: 'Select active Frappe site for Bench commands',
     });
 
-    if (selected) {
-      this.setActiveSite(selected.label);
-      return selected.label;
+    if (!selected) {
+      return null;
     }
 
-    return null;
+    if (selected.isCustom) {
+      const customSite = await vscode.window.showInputBox({
+        prompt: 'Enter Frappe Site Name',
+        placeHolder: 'e.g. sitename.localhost or mysite.com',
+      });
+      if (customSite && customSite.trim()) {
+        const trimmed = customSite.trim();
+        if (!this.discoveredSites.includes(trimmed)) {
+          this.discoveredSites.push(trimmed);
+        }
+        this.setActiveSite(trimmed);
+        return trimmed;
+      }
+      return null;
+    }
+
+    this.setActiveSite(selected.label);
+    return selected.label;
   }
 }

@@ -9,8 +9,9 @@ import { VersionDetector } from './versionDetector';
 export class BenchDetector {
   public static findBenchRoot(workspaceRoot: string): string | null {
     let currentDir = workspaceRoot;
+    let fallbackAppDir: string | null = null;
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       const appsDir = path.join(currentDir, 'apps');
       const sitesDir = path.join(currentDir, 'sites');
       const hasApps = fs.existsSync(appsDir) && fs.statSync(appsDir).isDirectory();
@@ -21,10 +22,12 @@ export class BenchDetector {
       }
 
       // Check if current directory itself is an app inside a bench or standalone app
-      const hooksPy = path.join(currentDir, 'hooks.py');
-      const subHooksPy = path.join(currentDir, path.basename(currentDir), 'hooks.py');
-      if (fs.existsSync(hooksPy) || fs.existsSync(subHooksPy)) {
-        return currentDir;
+      if (!fallbackAppDir) {
+        const hooksPy = path.join(currentDir, 'hooks.py');
+        const subHooksPy = path.join(currentDir, path.basename(currentDir), 'hooks.py');
+        if (fs.existsSync(hooksPy) || fs.existsSync(subHooksPy)) {
+          fallbackAppDir = currentDir;
+        }
       }
 
       const parentDir = path.dirname(currentDir);
@@ -34,7 +37,7 @@ export class BenchDetector {
       currentDir = parentDir;
     }
 
-    return null;
+    return fallbackAppDir || workspaceRoot;
   }
 
   public static getActiveAppNames(benchRoot: string): string[] {

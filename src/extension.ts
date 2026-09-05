@@ -36,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const index = IndexManager.getInstance();
   const benchContext = index.initialize(workspaceRoot, defaultVersion);
   const siteMgr = SiteManager.getInstance();
-  siteMgr.discoverSites(workspaceRoot);
+  siteMgr.discoverSites(benchContext?.benchPath || workspaceRoot);
 
   // 2. Status Bar Items
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -199,6 +199,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand('frappeIntelligent.rebuildIndex', () => {
       index.rebuildIndex();
+      const bench = index.getBenchContext();
+      siteMgr.discoverSites(bench?.benchPath || workspaceRoot);
       generateStubs(workspaceRoot);
       updateStatusBar();
       updateSiteStatusBar();

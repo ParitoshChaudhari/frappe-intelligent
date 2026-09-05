@@ -730,39 +730,39 @@
     {
       "name": "set_value",
       "module": "frappe.model",
-      "signature": "frappe.model.set_value(doctype: string, name: string, fieldname: string | object, value?: any): Promise<any>",
-      "returnType": "Promise<void>",
-      "returnDescription": "Promise resolving after client model updates.",
-      "docstring": "Updates client in-memory doc and triggers field change events.",
-      "example": "frappe.model.set_value(cdt, cdn, \"amount\", 500);",
+      "signature": "frappe.model.set_value(cdt: string, cdn: string, fieldname: string | object, value?: any): Promise<any>",
+      "returnType": "Promise<any>",
+      "returnDescription": "Promise that resolves once client scripts and formulas have recalculated.",
+      "docstring": "Updates a field value on a child table row or memory document, triggering all client-side event handlers and formula recalculations. Always use `frappe.model.set_value` inside child table triggers instead of setting `row.qty = 5` directly.",
+      "example": "frappe.ui.form.on(\"Sales Order Item\", {\n    qty(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        // Calculate amount and update field with trigger:\n        const total_amount = row.qty * row.rate;\n        frappe.model.set_value(cdt, cdn, \"amount\", total_amount);\n    }\n});",
       "parameters": [
         {
-          "name": "doctype",
+          "name": "cdt",
           "type": "string",
-          "structure": "\"Sales Order\"",
+          "structure": "\"Sales Order Item\"",
           "optional": false,
-          "description": "DocType name."
+          "description": "Child DocType name (cdt)."
         },
         {
-          "name": "name",
+          "name": "cdn",
           "type": "string",
-          "structure": "\"SO-0001\"",
+          "structure": "\"row-001\"",
           "optional": false,
-          "description": "Document name ID."
+          "description": "Unique Child Document Name / row ID (cdn)."
         },
         {
           "name": "fieldname",
           "type": "string | object",
-          "structure": "\"status\"",
+          "structure": "\"amount\" OR { \"amount\": 500, \"discount\": 10 }",
           "optional": false,
-          "description": "Fieldname or key-value object to update in client cache."
+          "description": "Fieldname string OR dictionary of multiple field key-value pairs."
         },
         {
           "name": "value",
           "type": "any",
-          "structure": "\"Closed\"",
+          "structure": "500",
           "optional": true,
-          "description": "New value to assign in locals cache."
+          "description": "New field value to assign."
         }
       ]
     }
@@ -771,23 +771,25 @@
     {
       "name": "on",
       "module": "frappe.realtime",
-      "signature": "frappe.realtime.on(event: string, callback: Function)",
+      "signature": "frappe.realtime.on(event: string, callback: (data: any) => void): void",
       "returnType": "void",
-      "returnDescription": "None.",
-      "docstring": "Listens for real-time WebSocket events sent by frappe.publish_realtime on the backend.",
-      "example": "frappe.realtime.on(\"task_progress\", function(data) { console.log(data); });",
+      "returnDescription": "None",
+      "docstring": "Listens to real-time WebSocket events published from backend Python workers (`frappe.publish_realtime`). Enables live UI updates without refreshing the browser.",
+      "example": "// Listen for real-time task completion broadcast from backend worker:\nfrappe.realtime.on(\"import_progress\", function(data) {\n    frappe.show_progress(__(\"Importing Customers\"), data.current, data.total, data.message);\n    if (data.current === data.total) {\n        frappe.show_alert({ message: __(\"Import Finished!\"), indicator: \"green\" });\n        cur_frm.reload_doc();\n    }\n});",
       "parameters": [
         {
           "name": "event",
           "type": "string",
+          "structure": "\"task_completed\"",
           "optional": false,
-          "description": "Event name string."
+          "description": "Event name emitted from Python backend via `frappe.publish_realtime`."
         },
         {
           "name": "callback",
           "type": "Function",
+          "structure": "(data) => { ... }",
           "optional": false,
-          "description": "Handler callback."
+          "description": "Function executed when WebSocket event payload arrives."
         }
       ]
     }
@@ -796,25 +798,25 @@
     {
       "name": "on",
       "module": "frappe.ui.form",
-      "signature": "frappe.ui.form.on(doctype: string, event_handlers: object)",
+      "signature": "frappe.ui.form.on(doctype: string, handlers: object): void",
       "returnType": "void",
-      "returnDescription": "None.",
-      "docstring": "Registers client-side form event handlers (refresh, validate, onload, before_save, and field change triggers) for a DocType.",
-      "example": "frappe.ui.form.on(\"Sales Invoice\", {\n    refresh(frm) {\n        // ...\n    }\n});",
+      "returnDescription": "Registers form event listeners.",
+      "docstring": "Main entry point for all Frappe Client Scripts. Registers event listeners for form lifecycle events (`onload`, `refresh`, `validate`, `before_save`, `on_submit`) and field change triggers on parent and child DocTypes.",
+      "example": "// 1. Parent DocType handlers:\nfrappe.ui.form.on(\"Customer\", {\n    refresh(frm) {\n        if (frm.is_new()) {\n            frm.set_intro(__(\"Please fill all required business registration details.\"), \"blue\");\n        }\n    },\n    customer_type(frm) {\n        frm.toggle_reqd(\"tax_id\", frm.doc.customer_type === \"Company\");\n    }\n});\n\n// 2. Child Table handlers:\nfrappe.ui.form.on(\"Sales Order Item\", {\n    items_add(frm, cdt, cdn) {\n        frappe.msgprint(__(\"New item row added!\"));\n    },\n    rate(frm, cdt, cdn) {\n        const row = locals[cdt][cdn];\n        frappe.model.set_value(cdt, cdn, \"amount\", row.qty * row.rate);\n    }\n});",
       "parameters": [
         {
           "name": "doctype",
           "type": "string",
-          "structure": "\"Sales Invoice\"",
+          "structure": "\"Customer\"",
           "optional": false,
-          "description": "Target DocType name."
+          "description": "DocType name to attach listeners to."
         },
         {
-          "name": "event_handlers",
+          "name": "handlers",
           "type": "object",
-          "structure": "{\n  refresh(frm) { ... },\n  validate(frm) { ... },\n  fieldname(frm) { ... }\n}",
+          "structure": "{ refresh(frm) { ... }, validate(frm) { ... } }",
           "optional": false,
-          "description": "Dictionary of lifecycle event and field change functions."
+          "description": "Object dictionary mapping event names and fieldnames to callback functions."
         }
       ]
     }
