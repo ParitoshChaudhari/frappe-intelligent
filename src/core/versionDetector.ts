@@ -6,12 +6,13 @@ import { FrappeVersion } from './types';
  * Detects Frappe framework and app versions from pyproject.toml, __init__.py, or package metadata.
  */
 export class VersionDetector {
-  public static parseVersionString(versionStr: string): FrappeVersion {
+  public static parseVersionString(versionStr: string | null | undefined): FrappeVersion {
+    if (!versionStr) return 'v15';
     const clean = versionStr.replace(/[^0-9.]/g, '');
     const parts = clean.split('.');
     const major = parseInt(parts[0], 10);
 
-    if (major <= 13) {
+    if (major >= 11 && major <= 13) {
       return 'v13';
     } else if (major === 14) {
       return 'v14';
@@ -32,7 +33,7 @@ export class VersionDetector {
     if (fs.existsSync(pyprojectPath)) {
       try {
         const content = fs.readFileSync(pyprojectPath, 'utf8');
-        const match = content.match(/version\s*=\s*["']([^"']+)["']/);
+        const match = content.match(/\[project\][\s\S]*?version\s*=\s*["']([^"']+)["']/) || content.match(/version\s*=\s*["']([^"']+)["']/);
         if (match && match[1]) {
           return {
             version: match[1],
@@ -54,7 +55,7 @@ export class VersionDetector {
       if (fs.existsSync(initPath)) {
         try {
           const content = fs.readFileSync(initPath, 'utf8');
-          const match = content.match(/__version__\s*=\s*["']([^"']+)["']/);
+          const match = content.match(/__version__\s*(?::\s*str\s*)?=\s*["']([^"']+)["']/);
           if (match && match[1]) {
             return {
               version: match[1],

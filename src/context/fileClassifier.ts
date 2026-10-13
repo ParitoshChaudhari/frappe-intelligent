@@ -56,10 +56,28 @@ export class FileClassifier {
       const doctypeIdx = parts.lastIndexOf('doctype');
       if (doctypeIdx !== -1 && parts.length > doctypeIdx + 2) {
         const folderDocType = parts[doctypeIdx + 1];
-        result.fileType = 'doctype_form_js';
-        result.doctypeName = folderDocType;
-        result.isServerCode = false;
-        result.isClientCode = true;
+        if (basename === folderDocType + '.js') {
+          result.fileType = 'doctype_form_js';
+          result.doctypeName = folderDocType;
+          result.isServerCode = false;
+          result.isClientCode = true;
+          return result;
+        } else if (basename === folderDocType + '_list.js') {
+          result.fileType = 'doctype_list_js' as any;
+          result.doctypeName = folderDocType;
+          result.isClientCode = true;
+          return result;
+        }
+      }
+    }
+
+    // HTML/Jinja templates in DocType directory
+    if (normalizedPath.includes('/doctype/') && (ext === '.html' || ext === '.htm')) {
+      const parts = normalizedPath.split('/');
+      const doctypeIdx = parts.lastIndexOf('doctype');
+      if (doctypeIdx !== -1 && parts.length > doctypeIdx + 2) {
+        result.fileType = 'unknown'; // Keep as unknown but set doctypeName
+        result.doctypeName = parts[doctypeIdx + 1];
         return result;
       }
     }
@@ -106,7 +124,7 @@ export class FileClassifier {
     }
 
     // 9. API / Utility modules
-    if (basename === 'api.py' || normalizedPath.includes('/api/')) {
+    if (basename === 'api.py' || (normalizedPath.includes('/api/') && ext === '.py')) {
       result.fileType = 'api_module_py';
       result.isServerCode = true;
       return result;
@@ -129,6 +147,12 @@ export class FileClassifier {
           if (formOnMatch && formOnMatch[1]) {
             result.doctypeName = formOnMatch[1];
           }
+        }
+      } else if (ext === '.html' || ext === '.htm') {
+        const docTypeMatch = fileContent.match(/<!--\s*doctype\s*:\s*([a-zA-Z0-9_ ]+)\s*-->/i) || 
+                             fileContent.match(/frappe\.get_doc\(\s*['"]([^'"]+)['"]/);
+        if (docTypeMatch && docTypeMatch[1]) {
+          result.doctypeName = docTypeMatch[1];
         }
       }
     }

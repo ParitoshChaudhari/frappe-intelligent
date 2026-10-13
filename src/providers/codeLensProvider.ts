@@ -23,7 +23,7 @@ export class FrappeCodeLensProvider implements vscode.CodeLensProvider {
     if (fileInfo.isServerCode && fileInfo.fileType === 'doctype_controller_py') {
       for (let i = 0; i < document.lineCount; i++) {
         const line = document.lineAt(i);
-        const classMatch = line.text.match(/^class\s+([a-zA-Z0-9_]+)\s*\(\s*Document\s*\):/);
+        const classMatch = line.text.match(/^class\s+([a-zA-Z0-9_]+)\s*\([^)]*\)\s*:/);
 
         if (classMatch) {
           const range = new vscode.Range(i, 0, i, line.text.length);

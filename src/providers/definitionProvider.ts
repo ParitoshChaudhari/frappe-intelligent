@@ -19,7 +19,7 @@ export class FrappeDefinitionProvider implements vscode.DefinitionProvider {
     // 1. In hooks.py: Check if cursor is on a dotted Python function string (e.g. "my_app.tasks.nightly_sync")
     if (fileInfo.fileType === 'hooks_py' || lineText.includes('.')) {
       const stringLiteralMatch = lineText.match(/["']([a-zA-Z0-9_.]+)["']/);
-      if (stringLiteralMatch && (stringLiteralMatch[1] === word || stringLiteralMatch[1].includes(word))) {
+      if (stringLiteralMatch && stringLiteralMatch[1] === word) {
         const fullDotted = stringLiteralMatch[1];
         const target = this.resolveDottedPath(fullDotted, index);
         if (target) return target;

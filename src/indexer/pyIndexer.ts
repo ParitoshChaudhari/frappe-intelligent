@@ -96,15 +96,28 @@ export class PyIndexer {
           continue;
         }
 
+        // Accumulate multi-line def if necessary
+        let fullDefLine = line;
+        let lineOffset = 0;
+        if (/^\s*(?:async\s+)?def\s+/.test(line) && !line.includes('):') && !/\)\s*(?:->[^:]+)?\s*:/.test(line)) {
+          for (let j = i + 1; j < Math.min(lines.length, i + 15); j++) {
+            fullDefLine += ' ' + lines[j].trim();
+            lineOffset++;
+            if (lines[j].includes('):') || /\)\s*(?:->[^:]+)?\s*:/.test(lines[j])) {
+              break;
+            }
+          }
+        }
+
         // 3. Detect Method Definitions inside Class
-        const methodMatch = line.match(/^\s{4}def\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)(?:\s*->\s*([^:]+))?:/);
+        const methodMatch = fullDefLine.match(/^\s{4}(?:async\s+)?def\s+([a-zA-Z0-9_]+)\s*\(([\s\S]*?)\)(?:\s*->\s*([^:]+))?:/);
         if (methodMatch && currentClass) {
           const methodName = methodMatch[1];
-          const rawParams = methodMatch[2];
+          const rawParams = methodMatch[2].replace(/\s+/g, ' ').trim();
           const returnType = methodMatch[3]?.trim();
 
           const params = this.parseParams(rawParams);
-          const docstring = this.extractDocstring(lines, i + 1);
+          const docstring = this.extractDocstring(lines, i + lineOffset + 1);
 
           const methodSymbol: FrappeApiSymbol = {
             name: methodName,
@@ -125,18 +138,19 @@ export class PyIndexer {
             whitelistedMethods.set(`${moduleImportPath}.${methodName}`, methodSymbol);
           }
           pendingDecorator = null;
+          i += lineOffset;
           continue;
         }
 
         // 4. Detect Module-Level Function Definitions
-        const funcMatch = line.match(/^def\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)(?:\s*->\s*([^:]+))?:/);
+        const funcMatch = fullDefLine.match(/^(?:async\s+)?def\s+([a-zA-Z0-9_]+)\s*\(([\s\S]*?)\)(?:\s*->\s*([^:]+))?:/);
         if (funcMatch) {
           const funcName = funcMatch[1];
-          const rawParams = funcMatch[2];
+          const rawParams = funcMatch[2].replace(/\s+/g, ' ').trim();
           const returnType = funcMatch[3]?.trim();
 
           const params = this.parseParams(rawParams);
-          const docstring = this.extractDocstring(lines, i + 1);
+          const docstring = this.extractDocstring(lines, i + lineOffset + 1);
 
           const funcSymbol: FrappeApiSymbol = {
             name: funcName,
@@ -168,10 +182,11 @@ export class PyIndexer {
           }
           pendingDecorator = null;
           currentClass = null;
+          i += lineOffset;
           continue;
         }
 
-        if (!trimmed.startsWith('@')) {
+        if (trimmed !== '' && !trimmed.startsWith('@') && !trimmed.startsWith('#')) {
           pendingDecorator = null;
         }
       }
@@ -216,25 +231,75 @@ export class PyIndexer {
   private static parseParams(rawParams: string): FrappeMethodParam[] {
     if (!rawParams.trim()) return [];
 
-    return rawParams
-      .split(',')
-      .map((p) => p.trim())
+    const params: string[] = [];
+    let current = '';
+    let bracketDepth = 0;
+    let parenDepth = 0;
+    let braceDepth = 0;
+    let inQuote: string | null = null;
+
+    for (let i = 0; i < rawParams.length; i++) {
+      const char = rawParams[i];
+      if (inQuote) {
+        if (char === inQuote && rawParams[i - 1] !== '\\') {
+          inQuote = null;
+        }
+        current += char;
+      } else if (char === '"' || char === "'") {
+        inQuote = char;
+        current += char;
+      } else if (char === '[') {
+        bracketDepth++;
+        current += char;
+      } else if (char === ']') {
+        if (bracketDepth > 0) bracketDepth--;
+        current += char;
+      } else if (char === '(') {
+        parenDepth++;
+        current += char;
+      } else if (char === ')') {
+        if (parenDepth > 0) parenDepth--;
+        current += char;
+      } else if (char === '{') {
+        braceDepth++;
+        current += char;
+      } else if (char === '}') {
+        if (braceDepth > 0) braceDepth--;
+        current += char;
+      } else if (char === ',' && bracketDepth === 0 && parenDepth === 0 && braceDepth === 0) {
+        if (current.trim()) params.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    if (current.trim()) {
+      params.push(current.trim());
+    }
+
+    return params
       .filter((p) => p !== 'self' && p !== 'cls' && p.length > 0)
       .map((p) => {
-        const parts = p.split('=');
-        const nameAndType = parts[0].trim().split(':');
-        const typeStr = nameAndType[1]?.trim();
+        const eqIdx = p.indexOf('=');
+        const declaration = eqIdx !== -1 ? p.substring(0, eqIdx).trim() : p.trim();
+        const defaultVal = eqIdx !== -1 ? p.substring(eqIdx + 1).trim() : undefined;
+
+        const colonIdx = declaration.indexOf(':');
+        const name = colonIdx !== -1 ? declaration.substring(0, colonIdx).trim() : declaration;
+        const typeStr = colonIdx !== -1 ? declaration.substring(colonIdx + 1).trim() : undefined;
+
         let structure: string | undefined;
         if (typeStr) {
           if (typeStr.includes('dict')) structure = '{ "key": value }';
           else if (typeStr.includes('list')) structure = '[ "item" ]';
         }
+
         return {
-          name: nameAndType[0].trim(),
+          name,
           type: typeStr,
           structure,
-          default: parts[1]?.trim(),
-          optional: parts.length > 1,
+          default: defaultVal,
+          optional: defaultVal !== undefined,
         };
       });
   }

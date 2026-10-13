@@ -3,6 +3,7 @@ import { FileClassifier } from '../context/fileClassifier';
 import { ScopeAnalyzer } from '../context/scopeAnalyzer';
 import { IndexManager } from '../indexer/indexManager';
 import { DocTypeSchema, FrappeField } from '../core/types';
+import { FrappeSignatureHelpProvider } from './signatureHelpProvider';
 
 import pythonApis from '../data/pythonApis.json';
 import jsApis from '../data/jsApis.json';
@@ -46,6 +47,60 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
   private static cachedDfProps: vscode.CompletionItem[] = [];
   private static isInitialized = false;
 
+  private static readonly DOC_TYPE_CALLEES = new Set([
+    'frappe.get_doc',
+    'frappe.get_cached_doc',
+    'frappe.get_all',
+    'frappe.get_list',
+    'frappe.get_value',
+    'frappe.get_cached_value',
+    'frappe.new_doc',
+    'frappe.get_single',
+    'frappe.get_meta',
+    'frappe.copy_doc',
+    'frappe.delete_doc',
+    'frappe.rename_doc',
+    'frappe.reload_doctype',
+    'frappe.db.get_value',
+    'frappe.db.get_values',
+    'frappe.db.set_value',
+    'frappe.db.exists',
+    'frappe.db.count',
+    'frappe.db.delete',
+    'frappe.db.get_doc',
+    'frappe.db.get_list',
+    'frappe.db.get_all',
+    'frappe.db.insert',
+    'frappe.qb.DocType',
+    'frappe.qb.from_',
+    'frappe.model.get_doc',
+    'frappe.model.get_value',
+    'frappe.model.set_value',
+    'frappe.model.add_child',
+    'frappe.model.clear_table',
+    'frappe.model.delete_doc',
+    'frappe.model.with_doctype',
+    'frappe.model.with_doc',
+    'frappe.model.is_submittable',
+    'frappe.model.is_single',
+    'frappe.model.is_tree',
+    'frappe.model.can_create',
+    'frappe.model.can_read',
+    'frappe.model.can_write',
+    'frappe.model.can_delete',
+    'frappe.model.can_cancel',
+    'frappe.ui.form.on',
+    'frappe.set_route',
+  ]);
+
+  private static readonly FIELD_NAME_CALLEES_ARG2 = new Set([
+    'frappe.db.get_value',
+    'frappe.db.get_values',
+    'frappe.db.set_value',
+    'frappe.get_value',
+    'frappe.get_cached_value',
+  ]);
+
   constructor() {
     FrappeCompletionProvider.initializeCache();
   }
@@ -84,10 +139,37 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     this.cachedJsLocals = this.buildItems((jsApis as any)['locals'] || [], vscode.CompletionItemKind.Variable, 'javascript');
     this.cachedJsGlobals = this.buildItems((jsApis as any)['frappe.globals'] || [], vscode.CompletionItemKind.Variable, 'javascript');
 
-    const uiNamespaces = ['Dialog', 'form', 'toolbar', 'keys', 'misc'];
+    const uiNamespaces = [
+      {
+        name: 'Dialog',
+        desc: 'Modal dialog container for custom forms, interactive prompts, and complex popup UI.',
+        example: 'let d = new frappe.ui.Dialog({\n    title: __("Enter Details"),\n    fields: [\n        { label: __("Name"), fieldname: "user_name", fieldtype: "Data", reqd: 1 }\n    ],\n    primary_action_label: __("Submit"),\n    primary_action(values) {\n        console.log(values);\n        d.hide();\n    }\n});\nd.show();'
+      },
+      {
+        name: 'form',
+        desc: 'Client form controller and event registration namespace.',
+        example: 'frappe.ui.form.on("Sales Order", {\n    refresh(frm) {\n        frm.add_custom_button(__("Process"), () => {\n            frappe.msgprint(__("Processing order"));\n        });\n    }\n});'
+      },
+      {
+        name: 'toolbar',
+        desc: 'Desk header toolbar, search awesomebar, and navigation controls.',
+        example: 'frappe.ui.toolbar.clear_cache();'
+      },
+      {
+        name: 'keys',
+        desc: 'Keyboard shortcut bindings and listener manager.',
+        example: 'frappe.ui.keys.add_shortcut({\n    shortcut: "ctrl+s",\n    action: () => frm.save(),\n    description: __("Save Document")\n});'
+      },
+      {
+        name: 'misc',
+        desc: 'Miscellaneous UI utilities, theme helpers, and desktop notifications.',
+        example: 'frappe.ui.misc.about();'
+      }
+    ];
     this.cachedJsUi = uiNamespaces.map((ns) => {
-      const item = new vscode.CompletionItem(ns, vscode.CompletionItemKind.Module);
-      item.detail = `frappe.ui.${ns}`;
+      const item = new vscode.CompletionItem(ns.name, vscode.CompletionItemKind.Module);
+      item.detail = `frappe.ui.${ns.name}`;
+      item.documentation = new vscode.MarkdownString(`${ns.desc}\n\n**Example:**\n\`\`\`javascript\n${ns.example}\n\`\`\``);
       return item;
     });
 
@@ -102,18 +184,46 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
 
     // DocField properties pre-caching
     const props = [
-      { name: 'reqd', desc: 'Mandatory / Required property (boolean: 1 or 0)' },
-      { name: 'read_only', desc: 'Read-only / Disabled property (boolean: 1 or 0)' },
-      { name: 'hidden', desc: 'Hidden / Visibility property (boolean: 1 or 0)' },
-      { name: 'options', desc: 'Select options or Link DocType target' },
-      { name: 'label', desc: 'Field display label' },
-      { name: 'description', desc: 'Help text description below input' },
-      { name: 'placeholder', desc: 'Placeholder text inside input' },
+      {
+        name: 'reqd',
+        desc: 'Mandatory / Required property (boolean: 1 or 0)',
+        example: 'frm.set_df_property("customer", "reqd", 1);'
+      },
+      {
+        name: 'read_only',
+        desc: 'Read-only / Disabled property (boolean: 1 or 0)',
+        example: 'frm.set_df_property("posting_date", "read_only", 1);'
+      },
+      {
+        name: 'hidden',
+        desc: 'Hidden / Visibility property (boolean: 1 or 0)',
+        example: 'frm.set_df_property("discount_amount", "hidden", 1);'
+      },
+      {
+        name: 'options',
+        desc: 'Select options (array of strings or newline-separated string) or Link DocType target',
+        example: 'frm.set_df_property("status", "options", ["Draft", "Submitted", "Cancelled"]);'
+      },
+      {
+        name: 'label',
+        desc: 'Field display label',
+        example: 'frm.set_df_property("total_amount", "label", __("Grand Total"));'
+      },
+      {
+        name: 'description',
+        desc: 'Help text description below input',
+        example: 'frm.set_df_property("tax_id", "description", __("Enter valid 10-digit Tax ID"));'
+      },
+      {
+        name: 'placeholder',
+        desc: 'Placeholder text inside input',
+        example: 'frm.set_df_property("remarks", "placeholder", __("Enter reason for return..."));'
+      },
     ];
     this.cachedDfProps = props.map((p) => {
       const item = new vscode.CompletionItem(p.name, vscode.CompletionItemKind.Property);
       item.detail = `DocField Property: ${p.name}`;
-      item.documentation = new vscode.MarkdownString(p.desc);
+      item.documentation = new vscode.MarkdownString(`${p.desc}\n\n**Example:**\n\`\`\`javascript\n${p.example}\n\`\`\``);
       return item;
     });
 
@@ -160,7 +270,7 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     const lineText = document.lineAt(position.line).text;
     const fullText = document.getText();
     const fileInfo = FileClassifier.classify(document.fileName, fullText);
-    const scope = ScopeAnalyzer.analyze(lineText, position.character, fileInfo, fullText);
+    const scope = ScopeAnalyzer.analyze(lineText, position.character, fileInfo, fullText, position.line);
     const index = IndexManager.getInstance();
 
     // 0. Python Import Statements Completion (e.g. `from hrms...` or `import hrms...`)
@@ -381,7 +491,7 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
         }
       }
 
-      if (scope.callContext.callee === 'frappe.xcall' && scope.callContext.argIndex === 0 || scope.callContext.callee === 'frappe.call') {
+      if ((scope.callContext.callee === 'frappe.xcall' && scope.callContext.argIndex === 0) || scope.callContext.callee === 'frappe.call') {
         const whitelisted = index.getAllWhitelistedMethods();
         for (const wm of whitelisted) {
           const wmItem = new vscode.CompletionItem(wm.name, vscode.CompletionItemKind.Value);
@@ -393,82 +503,48 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
       }
     }
 
-    // 14. DocType Name Completions in DocType-expecting function calls
-    const docTypeCallees = [
-      'frappe.get_doc',
-      'frappe.get_cached_doc',
-      'frappe.get_all',
-      'frappe.get_list',
-      'frappe.get_value',
-      'frappe.get_cached_value',
-      'frappe.new_doc',
-      'frappe.get_single',
-      'frappe.get_meta',
-      'frappe.copy_doc',
-      'frappe.delete_doc',
-      'frappe.rename_doc',
-      'frappe.reload_doctype',
-      'frappe.db.get_value',
-      'frappe.db.get_values',
-      'frappe.db.set_value',
-      'frappe.db.exists',
-      'frappe.db.count',
-      'frappe.db.delete',
-      'frappe.db.truncate',
-      'frappe.db.get_doc',
-      'frappe.db.get_list',
-      'frappe.db.insert',
-      'frappe.qb.DocType',
-      'frappe.qb.from_',
-      'frappe.model.get_doc',
-      'frappe.model.get_value',
-      'frappe.model.set_value',
-      'frappe.model.add_child',
-      'frappe.model.clear_table',
-      'frappe.model.delete_doc',
-      'frappe.model.with_doctype',
-      'frappe.model.with_doc',
-      'frappe.model.is_submittable',
-      'frappe.model.is_single',
-      'frappe.model.is_tree',
-      'frappe.model.can_create',
-      'frappe.model.can_read',
-      'frappe.model.can_write',
-      'frappe.model.can_delete',
-      'frappe.model.can_cancel',
-      'frappe.ui.form.on',
-      'frappe.set_route',
-    ];
+    // 14. Function Call Context: Parameter Auto-suggestions, DocTypes, and DocFields
+    if (scope.callContext) {
+      const results: vscode.CompletionItem[] = [];
 
-    if (scope.callContext && docTypeCallees.includes(scope.callContext.callee)) {
-      if (scope.callContext.argIndex === 0) {
-        return this.buildDocTypeCompletionItems(index);
+      // 14.1 Suggest Named Function Parameters (e.g. `filters=`, `fields=`, `as_dict=`, `ignore_permissions=`)
+      const apiSymbol = FrappeSignatureHelpProvider.findApiSymbol(scope.callContext.callee, fileInfo.isServerCode);
+      if (apiSymbol) {
+        results.push(...this.buildParameterCompletionItems(apiSymbol, fileInfo.isServerCode));
       }
 
-      // Field completions in 2nd or 3rd argument when target DocType is known
-      if (scope.callContext.argIndex > 0) {
-        const targetDt = scope.targetDocTypeInCall || scope.currentDocType;
-        if (targetDt) {
-          const schema = index.getDocType(targetDt);
-          if (schema) {
-            return this.buildFieldCompletionItems(schema);
+      // 14.2 DocType Name Completions in DocType-expecting function calls
+      if (FrappeCompletionProvider.DOC_TYPE_CALLEES.has(scope.callContext.callee)) {
+        if (scope.callContext.argIndex === 0) {
+          results.push(...this.buildDocTypeCompletionItems(index));
+        } else if (FrappeCompletionProvider.FIELD_NAME_CALLEES_ARG2.has(scope.callContext.callee) && scope.callContext.argIndex === 2) {
+          const targetDt = scope.targetDocTypeInCall || scope.currentDocType;
+          if (targetDt) {
+            const schema = index.getDocType(targetDt);
+            if (schema) {
+              results.push(...this.buildFieldCompletionItems(schema));
+            }
           }
         }
       }
-    }
 
-    // 15. DocField Name Completions inside Form Script Arguments
-    if (scope.callContext && ['frm.set_value', 'frm.get_value', 'frm.get_field', 'frm.toggle_display', 'frm.toggle_enable', 'frm.toggle_reqd', 'frm.set_df_property', 'frm.refresh_field', 'frm.set_query', 'frm.add_child', 'frm.clear_table', 'doc.get', 'doc.set', 'doc.db_set'].includes(scope.callContext.callee)) {
-      if (scope.callContext.argIndex === 0 && scope.currentDocType) {
-        const schema = index.getDocType(scope.currentDocType);
-        if (schema) {
-          return this.buildFieldCompletionItems(schema);
+      // 14.3 DocField Name Completions inside Form Script Arguments
+      if (['frm.set_value', 'frm.get_value', 'frm.get_field', 'frm.toggle_display', 'frm.toggle_enable', 'frm.toggle_reqd', 'frm.set_df_property', 'frm.refresh_field', 'frm.set_query', 'frm.add_child', 'frm.clear_table', 'doc.get', 'doc.set', 'doc.db_set'].includes(scope.callContext.callee)) {
+        if (scope.callContext.argIndex === 0 && scope.currentDocType) {
+          const schema = index.getDocType(scope.currentDocType);
+          if (schema) {
+            results.push(...this.buildFieldCompletionItems(schema));
+          }
+        }
+
+        // DocField Property Completion in 2nd argument of `frm.set_df_property("field", "...")`
+        if (scope.callContext.callee === 'frm.set_df_property' && scope.callContext.argIndex === 1) {
+          results.push(...FrappeCompletionProvider.cachedDfProps);
         }
       }
 
-      // 16. DocField Property Completion in 2nd argument of `frm.set_df_property("field", "...")`
-      if (scope.callContext.callee === 'frm.set_df_property' && scope.callContext.argIndex === 1) {
-        return FrappeCompletionProvider.cachedDfProps;
+      if (results.length > 0) {
+        return results;
       }
     }
 
@@ -478,6 +554,37 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     }
 
     return [];
+  }
+
+  private buildParameterCompletionItems(apiSymbol: any, isServer: boolean): vscode.CompletionItem[] {
+    if (!apiSymbol || !Array.isArray(apiSymbol.parameters) || apiSymbol.parameters.length === 0) {
+      return [];
+    }
+    return apiSymbol.parameters.map((param: any, idx: number) => {
+      const label = isServer ? `${param.name}=` : param.name;
+      const item = new vscode.CompletionItem(label, vscode.CompletionItemKind.Variable);
+      const opt = param.optional ? ' (optional)' : ' (required)';
+      item.detail = `(parameter) ${param.name}: ${param.type || 'Any'}${opt}`;
+      item.sortText = `0_${String(idx).padStart(2, '0')}_${param.name}`;
+
+      const doc = new vscode.MarkdownString();
+      if (param.description) {
+        doc.appendMarkdown(`${param.description}\n\n`);
+      }
+      if (param.structure) {
+        doc.appendMarkdown(`📌 **Format / Example**: \`${param.structure}\`\n\n`);
+      }
+      if (param.default !== undefined) {
+        doc.appendMarkdown(`⚙️ **Default**: \`${param.default}\`\n\n`);
+      }
+      doc.appendMarkdown(`---\n💡 *${apiSymbol.signature || apiSymbol.name}*`);
+      item.documentation = doc;
+
+      if (isServer) {
+        item.insertText = new vscode.SnippetString(`${param.name}=$0`);
+      }
+      return item;
+    });
   }
 
   private buildDocTypeCompletionItems(index: IndexManager): vscode.CompletionItem[] {
@@ -539,27 +646,51 @@ export class FrappeCompletionProvider implements vscode.CompletionItemProvider {
     const seenPaths = new Set<string>();
 
     if (importContext.isFromImport) {
-      // User is in `from <module> import <symbol>`
-      // 1. Suggest all module paths
+      if (importContext.modulePrefix) {
+        const prefix = importContext.modulePrefix;
+        const cleanPrefix = prefix.replace(/\.$/, '');
+
+        for (const sym of symbols) {
+          if (sym.importPath.startsWith(cleanPrefix) && !seenPaths.has(sym.importPath)) {
+            seenPaths.add(sym.importPath);
+            const modItem = new vscode.CompletionItem(sym.importPath, vscode.CompletionItemKind.Module);
+            modItem.detail = `Frappe App Module: ${sym.appName}`;
+            items.push(modItem);
+          }
+
+          if (sym.importPath === cleanPrefix || sym.importPath.startsWith(cleanPrefix)) {
+            if (sym.symbolName) {
+              const kind = sym.symbolType === 'doctype' || sym.symbolType === 'class'
+                ? vscode.CompletionItemKind.Class
+                : vscode.CompletionItemKind.Function;
+              const symItem = new vscode.CompletionItem(sym.symbolName, kind);
+              symItem.detail = `${sym.symbolType === 'doctype' ? 'DocType Controller' : sym.symbolType}: ${sym.importPath}.${sym.symbolName}`;
+              if (sym.docstring) {
+                symItem.documentation = new vscode.MarkdownString(sym.docstring);
+              }
+              items.push(symItem);
+            }
+          }
+        }
+
+        if (cleanPrefix === 'frappe') {
+          for (const core of ['_', 'db', 'get_doc', 'get_all', 'get_list', 'whitelist', 'throw', 'msgprint', 'utils', 'qb']) {
+            items.push(new vscode.CompletionItem(core, vscode.CompletionItemKind.Function));
+          }
+        } else if (cleanPrefix === 'frappe.model.document') {
+          items.push(new vscode.CompletionItem('Document', vscode.CompletionItemKind.Class));
+        }
+
+        return items;
+      }
+
+      // User is in `from <module>`: Suggest module paths
       for (const sym of symbols) {
         if (!seenPaths.has(sym.importPath)) {
           seenPaths.add(sym.importPath);
           const modItem = new vscode.CompletionItem(sym.importPath, vscode.CompletionItemKind.Module);
           modItem.detail = `Frappe App Module: ${sym.appName}`;
           items.push(modItem);
-        }
-
-        // 2. Suggest symbols (classes, functions, doctypes)
-        if (sym.symbolName) {
-          const kind = sym.symbolType === 'doctype' || sym.symbolType === 'class'
-            ? vscode.CompletionItemKind.Class
-            : vscode.CompletionItemKind.Function;
-          const symItem = new vscode.CompletionItem(sym.symbolName, kind);
-          symItem.detail = `${sym.symbolType === 'doctype' ? 'DocType Controller' : sym.symbolType}: ${sym.importPath}.${sym.symbolName}`;
-          if (sym.docstring) {
-            symItem.documentation = new vscode.MarkdownString(sym.docstring);
-          }
-          items.push(symItem);
         }
       }
 

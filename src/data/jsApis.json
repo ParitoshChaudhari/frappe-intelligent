@@ -345,7 +345,8 @@
           "name": "callback",
           "type": "function",
           "optional": true,
-          "description": "Callback executed after assets load."
+          "description": "Callback executed after assets load.",
+          "structure": "() => { /* initialize custom library */ }"
         }
       ]
     },
@@ -670,7 +671,8 @@
           "name": "callback",
           "type": "function",
           "optional": true,
-          "description": "Callback executed after deletion completes."
+          "description": "Callback executed after deletion completes.",
+          "structure": "() => { frappe.msgprint(\"Deleted\"); }"
         }
       ]
     },
@@ -712,7 +714,8 @@
           "name": "callback",
           "type": "function",
           "optional": false,
-          "description": "Callback executed when metadata is ready in client memory."
+          "description": "Callback executed when metadata is ready in client memory.",
+          "structure": "() => { /* use meta */ }"
         }
       ]
     },
@@ -743,7 +746,8 @@
           "name": "callback",
           "type": "function",
           "optional": false,
-          "description": "Callback executed with document loaded."
+          "description": "Callback executed with document loaded.",
+          "structure": "(docname) => { let doc = frappe.get_doc(doctype, docname); }"
         }
       ]
     },
@@ -767,7 +771,8 @@
           "name": "from_amend",
           "type": "boolean",
           "optional": true,
-          "description": "True if copying for an amendment."
+          "description": "True if copying for an amendment.",
+          "structure": "true | false"
         }
       ]
     },
@@ -973,7 +978,8 @@
           "name": "callback",
           "type": "function",
           "optional": false,
-          "description": "Handler callback function."
+          "description": "Handler callback function.",
+          "structure": "() => { /* handle web form event */ }"
         }
       ]
     },
@@ -990,13 +996,15 @@
           "name": "fieldname",
           "type": "string",
           "optional": false,
-          "description": "Fieldname."
+          "description": "Fieldname.",
+          "structure": "\"email\""
         },
         {
           "name": "value",
           "type": "any",
           "optional": false,
-          "description": "Field value."
+          "description": "Field value.",
+          "structure": "\"user@example.com\""
         }
       ]
     },
@@ -1013,7 +1021,8 @@
           "name": "fieldname",
           "type": "string",
           "optional": false,
-          "description": "Fieldname."
+          "description": "Fieldname.",
+          "structure": "\"email\""
         }
       ]
     },
@@ -1030,7 +1039,8 @@
           "name": "fieldname",
           "type": "string",
           "optional": false,
-          "description": "Target fieldname."
+          "description": "Target fieldname.",
+          "structure": "\"email\""
         },
         {
           "name": "property",
@@ -1043,7 +1053,8 @@
           "name": "value",
           "type": "any",
           "optional": false,
-          "description": "Property value (0 or 1)."
+          "description": "Property value (0 or 1).",
+          "structure": "1 | 0"
         }
       ]
     }
@@ -1072,7 +1083,8 @@
           "name": "doc",
           "type": "object",
           "optional": false,
-          "description": "Row record object."
+          "description": "Row record object.",
+          "structure": "{ status: \"Open\", workflow_state: \"Pending\" }"
         }
       ]
     },
@@ -1089,7 +1101,8 @@
           "name": "listview",
           "type": "object",
           "optional": false,
-          "description": "ListView controller instance."
+          "description": "ListView controller instance.",
+          "structure": "listview"
         }
       ]
     }
@@ -1159,7 +1172,7 @@
       "returnType": "Promise<object[]>",
       "returnDescription": "Promise resolving with array of matching record dictionaries.",
       "docstring": "Fetches a list of records from the database respecting user read permissions.",
-      "example": "frappe.db.get_list(\"Customer\", {\n    fields: [\"name\", \"customer_name\", \"territory\"],\n    filters: { disabled: 0 },\n    limit: 20\n}).then(records => {\n    console.log(\"Active Customers:\", records);\n});",
+      "example": "frappe.db.get_list(\"Customer\", {\n    fields: [\"name\", \"customer_name\", \"territory\"],\n    filters: { disabled: 0 },\n    or_filters: [[\"customer_group\", \"=\", \"Commercial\"], [\"territory\", \"=\", \"India\"]],\n    order_by: \"creation desc\",\n    group_by: \"territory\",\n    start: 0,\n    limit: 20\n}).then(records => {\n    console.log(\"Customers:\", records);\n});",
       "parameters": [
         {
           "name": "doctype",
@@ -1171,9 +1184,9 @@
         {
           "name": "args",
           "type": "object",
-          "structure": "{\n    fields: [\"name\", \"title\"],\n    filters: { status: \"Open\" },\n    limit: 10\n}",
+          "structure": "{\n    fields: [\"name\", \"title\"],\n    filters: { status: \"Open\" },\n    or_filters: [[\"priority\", \"=\", \"Urgent\"]],\n    order_by: \"creation desc\",\n    group_by: \"department\",\n    start: 0,\n    limit: 20\n}",
           "optional": true,
-          "description": "Query parameters dictionary (fields, filters, order_by, limit)."
+          "description": "Query options: fields (array), filters (dict/array), or_filters (dict/array), order_by (string), group_by (string), start (offset), limit / page_length (number)."
         }
       ]
     },
@@ -1286,6 +1299,80 @@
     }
   ],
   "frappe.ui.Dialog": [
+    {
+      "name": "Dialog",
+      "module": "frappe.ui.Dialog",
+      "signature": "new frappe.ui.Dialog({ title: string, fields: Array<object>, size?: 'small' | 'large' | 'extra-large', primary_action_label?: string, primary_action?: (values: object) => void, secondary_action_label?: string, secondary_action?: () => void, minimizable?: boolean, static?: boolean })",
+      "returnType": "frappe.ui.Dialog",
+      "returnDescription": "A new Dialog instance. Call .show() to display it.",
+      "docstring": "Creates a new Frappe Dialog modal popup with form fields, action buttons, and configurable layout. Dialogs are used to collect user input, show confirmations, or display information in a modal overlay. The dialog supports all standard Frappe field types (Data, Link, Select, Table, Check, Text Editor, etc.) and can include sections, column breaks, and HTML fields for custom layouts.",
+      "example": "// Basic dialog with input fields\nconst dialog = new frappe.ui.Dialog({\n    title: __('Create New Task'),\n    size: 'large', // 'small' | 'large' | 'extra-large'\n    fields: [\n        {\n            label: 'Task Name',\n            fieldname: 'task_name',\n            fieldtype: 'Data',\n            reqd: 1\n        },\n        {\n            label: 'Priority',\n            fieldname: 'priority',\n            fieldtype: 'Select',\n            options: 'Low\\nMedium\\nHigh\\nUrgent',\n            default: 'Medium'\n        },\n        {\n            fieldtype: 'Column Break'\n        },\n        {\n            label: 'Assigned To',\n            fieldname: 'assigned_to',\n            fieldtype: 'Link',\n            options: 'User'\n        },\n        {\n            label: 'Due Date',\n            fieldname: 'due_date',\n            fieldtype: 'Date',\n            default: frappe.datetime.add_days(frappe.datetime.nowdate(), 7)\n        },\n        {\n            fieldtype: 'Section Break',\n            label: 'Details'\n        },\n        {\n            label: 'Description',\n            fieldname: 'description',\n            fieldtype: 'Text Editor'\n        }\n    ],\n    primary_action_label: __('Create'),\n    primary_action(values) {\n        frappe.call({\n            method: 'frappe.client.insert',\n            args: {\n                doc: {\n                    doctype: 'ToDo',\n                    description: values.task_name,\n                    assigned_by: frappe.session.user\n                }\n            },\n            callback(r) {\n                if (r.message) {\n                    frappe.show_alert({ message: __('Task created'), indicator: 'green' });\n                    dialog.hide();\n                }\n            }\n        });\n    },\n    secondary_action_label: __('Cancel'),\n    secondary_action() {\n        dialog.hide();\n    }\n});\n\ndialog.show();",
+      "parameters": [
+        {
+          "name": "title",
+          "type": "string",
+          "structure": "\"Enter Details\"",
+          "optional": false,
+          "description": "Title text displayed in the dialog header bar."
+        },
+        {
+          "name": "fields",
+          "type": "Array<object>",
+          "structure": "[{ fieldname: \"name\", fieldtype: \"Data\", label: \"Name\", reqd: 1 }]",
+          "optional": false,
+          "description": "Array of Frappe field definition objects. Each object can have: fieldname, fieldtype (Data, Link, Select, Check, Date, Table, Text Editor, HTML, Section Break, Column Break, etc.), label, options, default, reqd, depends_on, read_only, hidden, onchange, and other standard Frappe field properties."
+        },
+        {
+          "name": "size",
+          "type": "string",
+          "structure": "\"small\" | \"large\" | \"extra-large\"",
+          "optional": true,
+          "description": "Dialog modal size. Default is medium width. Use 'small' for simple inputs, 'large' for complex forms, 'extra-large' for data-heavy layouts."
+        },
+        {
+          "name": "primary_action_label",
+          "type": "string",
+          "structure": "\"Submit\"",
+          "optional": true,
+          "description": "Label for the primary (blue) action button. Defaults to 'Submit'."
+        },
+        {
+          "name": "primary_action",
+          "type": "function",
+          "structure": "(values) => { ... }",
+          "optional": true,
+          "description": "Callback executed when the primary button is clicked. Receives an object of all field values as the first argument. Called only after mandatory field validation passes."
+        },
+        {
+          "name": "secondary_action_label",
+          "type": "string",
+          "structure": "\"Cancel\"",
+          "optional": true,
+          "description": "Label for the secondary (grey) action button at the bottom left."
+        },
+        {
+          "name": "secondary_action",
+          "type": "function",
+          "structure": "() => { ... }",
+          "optional": true,
+          "description": "Callback executed when the secondary button is clicked. Typically used to dismiss the dialog."
+        },
+        {
+          "name": "minimizable",
+          "type": "boolean",
+          "structure": "true",
+          "optional": true,
+          "description": "If true, a minimize button appears in the dialog header, allowing users to collapse the dialog to a bar at the bottom of the screen."
+        },
+        {
+          "name": "static",
+          "type": "boolean",
+          "structure": "true",
+          "optional": true,
+          "description": "If true, the dialog cannot be closed by clicking outside or pressing Escape. User must explicitly click a button to dismiss."
+        }
+      ]
+    },
     {
       "name": "show",
       "module": "frappe.ui.Dialog",
@@ -1627,7 +1714,8 @@
           "name": "callback",
           "type": "Function",
           "optional": true,
-          "description": "Specific callback function to unbind."
+          "description": "Specific callback function to unbind.",
+          "structure": "handleUpdate"
         }
       ]
     },

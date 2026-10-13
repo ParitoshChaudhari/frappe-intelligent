@@ -4,6 +4,34 @@ This document tracks all changes, feature additions, enhancements, and bug fixes
 
 ---
 
+## 2026-10-13
+
+### Named Keyword Parameter Autocompletion & `get_list` Enhancements
+- Added autocomplete suggestions for function parameters across all Frappe Python and JavaScript APIs.
+- Python function calls (e.g. `frappe.get_all(`, `frappe.get_list(`, `frappe.db.get_list(`, `frappe.get_doc(`, `frappe.db.get_value(`, `frappe.msgprint(`, `frappe.sendmail(`) provide keyword arguments (`doctype=`, `filters=`, `or_filters=`, `fields=`, `order_by=`, `group_by=`, `start=`, `page_length=`, `limit_page_length=`, `pluck=`, `as_dict=`, `ignore_permissions=`, `run=`) with type signatures, descriptions, format structures, and default values.
+- Client-side JavaScript function calls (e.g. `frm.set_value(`, `frm.set_df_property(`, `frappe.call(`, `frappe.db.get_list(`) provide parameter suggestions and object configuration keys.
+- Added `frappe-db-get-list` and `frappe-get-list` Python code snippets and registered `hooks.json` snippets in `package.json`.
+- Preserved signature help floating tooltip compatibility and combined parameter suggestions with contextual DocType and DocField completions.
+
+### Documentation, Examples, and Parameter Format Coverage
+- Completed input format structures (`structure`) across all Python, JavaScript, and Form API parameters in JSON datasets (`pythonApis.json`, `jsApis.json`, `formApis.json`).
+- Added rich markdown documentation and code examples to `frappe.ui` submodules (`Dialog`, `form`, `toolbar`, `keys`, `misc`).
+- Added usage examples to all DocField property completions (`reqd`, `read_only`, `hidden`, `options`, `label`, `description`, `placeholder`).
+- Added markdown documentation and contextual code examples for all Jinja helpers (`{{ frappe.* }}`), Jinja filters (`{{ ... | * }}`), and translation tags (`{{ _("...") }}`).
+
+### Indexer, Provider & Core Architecture Improvements
+- **Python AST Indexer (`PyIndexer`)**: Added support for `async def` functions, multi-line function signatures, and complex parameter type annotations containing nested brackets, tuples, dicts, or string literals.
+- **Incremental Indexing & File Watcher**: Added batched debounce processing for file updates/deletions, ignored virtual environment directories (`env`, `venv`, `.venv`), and wired up JS form handler and function tracking in `IndexManager`.
+- **Hover, Code Actions & Diagnostics**:
+  - Added multi-word DocType string hover resolution (e.g. `"Sales Invoice"`).
+  - Attached `WorkspaceEdit` replacements to deprecation QuickFix `CodeAction` items and added secure permission-check replacement guidance for `flags.ignore_permissions`.
+  - Refined `cur_frm` deprecation warnings to target `doctype_form_js` files and improved controller method indentation detection.
+- **Stub Generators (`.pyi` & `.d.ts`)**: Added support for Python reserved keyword field names, numeric-prefixed DocType names, layout field filtering (`Section Break`, `Column Break`, `Tab Break`, `HTML`, `Fold`, `Heading`), and expanded Frappe field type mappings (`Table MultiSelect`, `Attach`, `JSON`, `Duration`, `Rating`, etc.).
+- **Bench CLI & Scaffolding**: Added shell-injection input sanitization for test filters and custom command inputs, overwrite confirmation modal when scaffolding existing files, and non-destructive `python.analysis.extraPaths` merging.
+- Expanded unit test suite to 79 passing tests.
+
+---
+
 ## 2026-09-05
 
 ### JavaScript Autocompletion, Child Table APIs, and Model Methods

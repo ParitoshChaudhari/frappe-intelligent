@@ -57,7 +57,7 @@ export class SiteManager {
               const hasPublicOrPrivate = fs.existsSync(path.join(fullPath, 'public')) || fs.existsSync(path.join(fullPath, 'private'));
               const isDomainLike = name.includes('.');
 
-              if (hasSiteConfig || hasPublicOrPrivate || isDomainLike || entries.length > 0) {
+              if (hasSiteConfig || (hasPublicOrPrivate && isDomainLike)) {
                 if (!this.discoveredSites.includes(name)) {
                   this.discoveredSites.push(name);
                 }
@@ -79,7 +79,9 @@ export class SiteManager {
                 this.discoveredSites.push(site);
               }
               if (this.discoveredSites.includes(site)) {
-                this.activeSite = site;
+                if (!this.activeSite || !this.discoveredSites.includes(this.activeSite)) {
+                  this.activeSite = site;
+                }
               }
             }
           } catch {

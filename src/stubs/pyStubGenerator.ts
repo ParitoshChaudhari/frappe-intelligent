@@ -28,11 +28,26 @@ export class PyStubGenerator {
       case 'Datetime':
       case 'Time':
       case 'Dynamic Link':
+      case 'Attach':
+      case 'Attach Image':
+      case 'JSON':
+      case 'Password':
+      case 'Phone':
+      case 'Barcode':
+      case 'Color':
+      case 'Geolocation':
+      case 'HTML Editor':
+      case 'Markdown Editor':
+      case 'Signature':
         return 'str';
+      case 'Rating':
+      case 'Duration':
+        return 'float';
       case 'Table':
+      case 'Table MultiSelect':
         if (options) {
           const childClass = options.replace(/[^a-zA-Z0-9]/g, '');
-          return `list['${childClass}']`;
+          return `List['${childClass}']`;
         }
         return 'list[Any]';
       default:
@@ -46,7 +61,9 @@ export class PyStubGenerator {
     lines.push('from typing import Any, Optional, Union, List');
     lines.push('from frappe.model.document import Document');
     lines.push('');
-    lines.push(`class ${schema.name.replace(/[^a-zA-Z0-9]/g, '')}(Document):`);
+    let className = schema.name.replace(/[^a-zA-Z0-9]/g, '');
+    if (/^\d/.test(className)) className = '_' + className;
+    lines.push(`class ${className}(Document):`);
     lines.push(`    """Frappe DocType: ${schema.name} (${schema.module || 'Core'})"""`);
 
     if (schema.fields.length === 0) {
@@ -55,9 +72,12 @@ export class PyStubGenerator {
     }
 
     for (const field of schema.fields) {
+      if (!field.fieldname || ['Section Break', 'Column Break', 'Tab Break', 'HTML', 'Fold', 'Heading'].includes(field.fieldtype)) continue;
+      const PYTHON_RESERVED = new Set(['from', 'import', 'class', 'def', 'return', 'pass', 'global', 'lambda', 'yield', 'raise', 'with', 'as', 'try', 'except', 'finally', 'for', 'while', 'if', 'else', 'elif', 'and', 'or', 'not', 'in', 'is', 'del', 'assert', 'break', 'continue']);
+      const fieldname = PYTHON_RESERVED.has(field.fieldname) ? '_' + field.fieldname : field.fieldname;
       const pyType = this.mapFieldTypeToPython(field.fieldtype, field.options);
       const customTag = field.is_custom ? '  # Custom Field' : '';
-      lines.push(`    ${field.fieldname}: ${pyType}${customTag}`);
+      lines.push(`    ${fieldname}: ${pyType}${customTag}`);
     }
 
     return lines.join('\n');

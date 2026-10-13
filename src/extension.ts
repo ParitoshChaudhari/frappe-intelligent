@@ -21,6 +21,7 @@ import { FrappeVersion } from './core/types';
 let statusBarItem: vscode.StatusBarItem;
 let siteStatusBarItem: vscode.StatusBarItem;
 let treeProvider: FrappeTreeProvider;
+let watcherDebounceTimer: NodeJS.Timeout | null = null;
 
 export async function activate(context: vscode.ExtensionContext) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -53,11 +54,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 3. Register Frappe Explorer TreeView
   treeProvider = new FrappeTreeProvider();
-  vscode.window.registerTreeDataProvider('frappeIntelligentView', treeProvider);
+  context.subscriptions.push(vscode.window.registerTreeDataProvider('frappeIntelligentView', treeProvider));
 
   // 4. Auto-Configure Python Environment (Guarded by Workspace Trust)
   if (vscode.workspace.isTrusted && config.get<boolean>('autoConfigurePythonEnv', true)) {
-    PythonEnvManager.configureWorkspacePython(benchContext);
+    PythonEnvManager.configureWorkspacePython(benchContext).catch(() => {});
   }
 
   // 5. Register Bench & Scaffold Commands Suite
@@ -125,7 +126,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 7. Debounced File Watcher with Path Filtering for Incremental Indexing
   const fileWatcher = vscode.workspace.createFileSystemWatcher('**/*.{py,js,json}');
-  let watcherDebounceTimer: NodeJS.Timeout | null = null;
 
   const isIgnoredPath = (fsPath: string) => {
     const normalized = fsPath.replace(/\\/g, '/');
@@ -145,11 +145,26 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   };
 
-  const scheduleRefresh = () => {
+  const pendingUpdates = new Set<string>();
+  const pendingDeletions = new Set<string>();
+
+  const scheduleBatchProcessing = () => {
     if (watcherDebounceTimer) {
       clearTimeout(watcherDebounceTimer);
     }
     watcherDebounceTimer = setTimeout(() => {
+      const updates = Array.from(pendingUpdates);
+      const deletions = Array.from(pendingDeletions);
+      pendingUpdates.clear();
+      pendingDeletions.clear();
+
+      for (const fp of deletions) {
+        index.removeFile(fp);
+      }
+      for (const fp of updates) {
+        index.updateFile(fp);
+      }
+
       updateStatusBar();
       treeProvider.refresh();
       watcherDebounceTimer = null;
@@ -158,27 +173,30 @@ export async function activate(context: vscode.ExtensionContext) {
 
   fileWatcher.onDidChange((uri) => {
     if (isIgnoredPath(uri.fsPath)) return;
-    index.updateFile(uri.fsPath);
-    scheduleRefresh();
+    pendingUpdates.add(uri.fsPath);
+    scheduleBatchProcessing();
   });
 
   fileWatcher.onDidCreate((uri) => {
     if (isIgnoredPath(uri.fsPath)) return;
-    index.updateFile(uri.fsPath);
-    scheduleRefresh();
+    pendingUpdates.add(uri.fsPath);
+    scheduleBatchProcessing();
   });
 
   fileWatcher.onDidDelete((uri) => {
     if (isIgnoredPath(uri.fsPath)) return;
-    index.removeFile(uri.fsPath);
-    scheduleRefresh();
+    pendingDeletions.add(uri.fsPath);
+    scheduleBatchProcessing();
   });
 
   context.subscriptions.push(fileWatcher);
 
   // 8. Automatic Stub Generation (if workspace is trusted and configured)
   if (vscode.workspace.isTrusted) {
-    generateStubs(workspaceRoot);
+    const stubRoot = benchContext?.benchPath || workspaceRoot;
+    setTimeout(() => {
+      generateStubs(stubRoot);
+    }, 1500);
   }
 
   // 9. Register Extension Commands
@@ -272,4 +290,10 @@ function generateStubs(workspaceRoot: string): { pyStubDir: string; jsStubDir: s
   return { pyStubDir, jsStubDir };
 }
 
-export function deactivate() {}
+export function deactivate() {
+  // Clear any pending debounce timers to prevent post-disposal access
+  if (watcherDebounceTimer) {
+    clearTimeout(watcherDebounceTimer);
+    watcherDebounceTimer = null;
+  }
+}

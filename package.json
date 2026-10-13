@@ -70,6 +70,10 @@
       {
         "language": "html",
         "path": "./snippets/jinja.json"
+      },
+      {
+        "language": "python",
+        "path": "./snippets/hooks.json"
       }
     ],
     "commands": [
@@ -260,7 +264,6 @@
         "category": "Frappe Intelligent"
       }
     ],
-
     "menus": {
       "editor/title": [
         {
@@ -328,13 +331,15 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "package": "vsce package",
     "test": "npm run compile && mocha --require out/test/setup.js out/test/**/*.test.js"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.6",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
-    "@types/mocha": "^10.0.6",
-    "typescript": "^5.3.3",
-    "mocha": "^10.2.0"
+    "@vscode/vsce": "^3.9.2",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3"
   }
 }

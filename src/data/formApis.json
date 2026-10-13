@@ -7,7 +7,7 @@
       "returnType": "Promise<void>",
       "returnDescription": "Promise that resolves once the field value has been set and UI inputs re-rendered.",
       "docstring": "Sets the value of a field on the current open Form and automatically updates the screen UI. If passing an object, it sets multiple fields simultaneously.",
-      "example": "# 1. Set a single field value:\nfrm.set_value(\"posting_date\", frappe.datetime.nowdate());\n\n# 2. Set multiple fields simultaneously with a dictionary:\nfrm.set_value({\n    status: \"Approved\",\n    approved_by: frappe.session.user,\n    approval_date: frappe.datetime.nowdate()\n});",
+      "example": "// 1. Set a single field value:\nfrm.set_value(\"posting_date\", frappe.datetime.nowdate());\n\n// 2. Set multiple fields simultaneously with an object:\nfrm.set_value({\n    status: \"Approved\",\n    approved_by: frappe.session.user,\n    approval_date: frappe.datetime.nowdate()\n});",
       "parameters": [
         {
           "name": "fieldname",
@@ -64,13 +64,15 @@
           "name": "callback",
           "type": "function",
           "optional": true,
-          "description": "Callback invoked after successful save response."
+          "description": "Callback invoked after successful save response.",
+          "structure": "(r) => { if (!r.exc) { ... } }"
         },
         {
           "name": "btn",
           "type": "any",
           "optional": true,
-          "description": "Triggering button element to freeze while saving."
+          "description": "Triggering button element to freeze while saving.",
+          "structure": "btn_element"
         }
       ]
     },
@@ -109,7 +111,7 @@
       "returnType": "void",
       "returnDescription": "None.",
       "docstring": "Dynamically modifies a DocField property (e.g. `reqd`, `read_only`, `hidden`, `options`, `label`) on the active form.",
-      "example": "# 1. Make field mandatory:\nfrm.set_df_property(\"tax_id\", \"reqd\", 1);\n\n# 2. Hide a field conditionally:\nfrm.set_df_property(\"discount_percentage\", \"hidden\", frm.doc.total < 1000);\n\n# 3. Modify options in a Select field:\nfrm.set_df_property(\"priority\", \"options\", [\"Low\", \"Medium\", \"High\", \"Urgent\"]);",
+      "example": "// 1. Make field mandatory:\nfrm.set_df_property(\"tax_id\", \"reqd\", 1);\n\n// 2. Hide a field conditionally:\nfrm.set_df_property(\"discount_percentage\", \"hidden\", frm.doc.total < 1000);\n\n// 3. Modify options in a Select field:\nfrm.set_df_property(\"priority\", \"options\", [\"Low\", \"Medium\", \"High\", \"Urgent\"]);",
       "parameters": [
         {
           "name": "fieldname",
@@ -136,13 +138,15 @@
           "name": "docname",
           "type": "string",
           "optional": true,
-          "description": "Child row docname if modifying a child table row."
+          "description": "Child row docname if modifying a child table row.",
+          "structure": "\"row_name_1\""
         },
         {
           "name": "table_field",
           "type": "string",
           "optional": true,
-          "description": "Parent table fieldname if modifying a child table row."
+          "description": "Parent table fieldname if modifying a child table row.",
+          "structure": "\"items\""
         }
       ]
     },
@@ -504,7 +508,8 @@
           "type": "boolean",
           "optional": true,
           "default": "true",
-          "description": "Set True to hide/disable Save button, False to restore."
+          "description": "Set True to hide/disable Save button, False to restore.",
+          "structure": "true | false"
         }
       ]
     },
@@ -568,7 +573,8 @@
           "name": "callback",
           "type": "function",
           "optional": true,
-          "description": "Callback executed after row is appended."
+          "description": "Callback executed after row is appended.",
+          "structure": "(row) => { row.qty = 1; }"
         }
       ]
     },
@@ -825,7 +831,8 @@
           "name": "title",
           "type": "string",
           "optional": false,
-          "description": "Display title."
+          "description": "Display title.",
+          "structure": "\"Analytics Dashboard\""
         }
       ]
     },
@@ -842,7 +849,8 @@
           "name": "label",
           "type": "string",
           "optional": false,
-          "description": "Badge label text."
+          "description": "Badge label text.",
+          "structure": "\"Active\""
         },
         {
           "name": "color",
@@ -905,7 +913,8 @@
           "name": "group",
           "type": "string",
           "optional": true,
-          "description": "Button group name."
+          "description": "Button group name.",
+          "structure": "\"Actions\""
         }
       ]
     },
@@ -979,7 +988,8 @@
           "name": "action",
           "type": "function",
           "optional": false,
-          "description": "Action callback handler."
+          "description": "Action callback handler.",
+          "structure": "() => { /* secondary handler */ }"
         }
       ]
     },
@@ -1013,7 +1023,8 @@
           "name": "action",
           "type": "function",
           "optional": false,
-          "description": "Click event handler."
+          "description": "Click event handler.",
+          "structure": "() => { /* menu handler */ }"
         }
       ]
     },
@@ -1037,7 +1048,8 @@
           "name": "action",
           "type": "function",
           "optional": false,
-          "description": "Click event handler."
+          "description": "Click event handler.",
+          "structure": "() => { /* action handler */ }"
         }
       ]
     }

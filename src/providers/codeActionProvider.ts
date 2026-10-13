@@ -30,6 +30,9 @@ export class FrappeCodeActionProvider implements vscode.CodeActionProvider {
           );
           action.diagnostics = [diagnostic];
           action.isPreferred = true;
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(document.uri, diagnostic.range, dep.replacement);
+          action.edit = edit;
           actions.push(action);
         }
       }

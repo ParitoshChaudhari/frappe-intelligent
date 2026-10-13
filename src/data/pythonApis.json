@@ -53,11 +53,11 @@
     {
       "name": "get_all",
       "module": "frappe",
-      "signature": "frappe.get_all(doctype: str, filters: dict | list = None, fields: list[str] = None, order_by: str = None, limit_page_length: int = None) -> list[dict]",
-      "returnType": "list[dict]",
-      "returnDescription": "List of dictionaries matching your query filter. Each dictionary contains the requested fields.",
-      "docstring": "Fetches a list of records from the database without checking user permissions (faster than get_list). Ideal for backend scripts, APIs, and background jobs.",
-      "example": "employees = frappe.get_all(\n    \"Employee\",\n    filters={\"status\": \"Active\", \"department\": \"Sales\"},\n    fields=[\"name\", \"employee_name\", \"cell_number\"],\n    order_by=\"employee_name asc\",\n    limit_page_length=50\n)",
+      "signature": "frappe.get_all(doctype: str, filters: dict | list = None, fields: list[str] = None, or_filters: dict | list = None, order_by: str = None, group_by: str = None, start: int = 0, page_length: int = None, run: bool = True, pluck: str = None, distinct: bool = False, debug: bool = False) -> list[dict] | list[Any] | str",
+      "returnType": "list[dict] | list[Any] | str",
+      "returnDescription": "List of dictionaries matching your query filter without permission checks. If pluck is set, returns a flat list of field values. If run=False, returns the compiled raw SQL query string.",
+      "docstring": "Fetches records directly from the database without evaluating user permissions (faster than get_list). Ideal for backend scripts, APIs, background jobs, and system tasks.",
+      "example": "# 1. Fetch active employees with specific fields:\nemployees = frappe.get_all(\n    \"Employee\",\n    filters={\"status\": \"Active\", \"department\": \"Sales\"},\n    fields=[\"name\", \"employee_name\", \"cell_number\"],\n    order_by=\"employee_name asc\",\n    page_length=50\n)\n\n# 2. Query with or_filters (matches either condition):\nurgent_leads = frappe.get_all(\n    \"Lead\",\n    filters={\"source\": \"Website\"},\n    or_filters=[\n        [\"status\", \"=\", \"Open\"],\n        [\"lead_name\", \"like\", \"%VIP%\"]\n    ],\n    fields=[\"name\", \"lead_name\", \"email_id\"]\n)\n\n# 3. Aggregation and GROUP BY (e.g. count per department):\ndept_counts = frappe.get_all(\n    \"Employee\",\n    fields=[\"department\", \"count(name) as total_employees\"],\n    group_by=\"department\",\n    order_by=\"total_employees desc\"\n)\n\n# 4. Pagination using start (offset) and page_length:\npaged_records = frappe.get_all(\n    \"Customer\",\n    fields=[\"name\", \"customer_name\"],\n    start=40,\n    page_length=20,\n    order_by=\"creation desc\"\n)\n\n# 5. Inspection / Dry-run with run=False (returns raw SQL string):\nsql_query = frappe.get_all(\n    \"Sales Invoice\",\n    filters={\"docstatus\": 1},\n    fields=[\"name\", \"grand_total\"],\n    run=False\n)\nprint(\"Raw SQL:\", sql_query)\n\n# 6. Pluck single column into a flat Python list:\nactive_emails = frappe.get_all(\"User\", filters={\"enabled\": 1}, pluck=\"email\")",
       "parameters": [
         {
           "name": "doctype",
@@ -69,78 +69,292 @@
         {
           "name": "filters",
           "type": "dict | list",
-          "structure": "{\"status\": \"Active\"} OR [[\"status\", \"=\", \"Active\"]]",
+          "structure": "{\"status\": \"Active\"} OR [[\"status\", \"=\", \"Active\"], [\"creation\", \">\", \"2026-01-01\"]]",
           "optional": true,
-          "description": "Filtering conditions as key-value pairs or list of filter triplets."
+          "default": "None",
+          "description": "AND filtering conditions as key-value pairs or list of filter triplets [field, op, value]."
+        },
+        {
+          "name": "or_filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Open\", \"priority\": \"Urgent\"} OR [[\"status\", \"=\", \"Open\"], [\"priority\", \"=\", \"Urgent\"]]",
+          "optional": true,
+          "default": "None",
+          "description": "OR filtering conditions. Matches records satisfying ANY condition in this set. Combined with 'filters' via logical AND (i.e. filters AND (or_filters))."
         },
         {
           "name": "fields",
-          "type": "list[str]",
-          "structure": "[\"name\", \"employee_name\", \"department\"]",
+          "type": "list[str] | str",
+          "structure": "[\"name\", \"employee_name\", \"department\"] OR [\"department\", \"count(name) as total\"]",
           "optional": true,
           "default": "[\"name\"]",
-          "description": "List of field names to retrieve."
+          "description": "List of field names or aggregate expressions with aliases to retrieve. Defaults to [\"name\"]."
         },
         {
           "name": "order_by",
           "type": "str",
-          "structure": "\"creation desc\"",
+          "structure": "\"creation desc\" OR \"modified desc, name asc\"",
           "optional": true,
+          "default": "\"idx asc, modified desc\"",
           "description": "Sorting column and direction."
+        },
+        {
+          "name": "group_by",
+          "type": "str",
+          "structure": "\"department\" OR \"customer_group, territory\"",
+          "optional": true,
+          "default": "None",
+          "description": "SQL GROUP BY clause for aggregate queries. Typically combined with aggregate functions in 'fields' (e.g. count, sum, avg)."
+        },
+        {
+          "name": "start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "0-based offset / record index to begin retrieving records from for pagination (alias: limit_start)."
+        },
+        {
+          "name": "page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "None",
+          "description": "Maximum number of records to return per query / page (alias: limit_page_length, limit)."
+        },
+        {
+          "name": "limit_start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "Alias for 'start'. 0-based offset for pagination."
         },
         {
           "name": "limit_page_length",
           "type": "int",
+          "structure": "20",
           "optional": true,
-          "default": "20",
-          "description": "Maximum number of records to return."
+          "default": "None",
+          "description": "Alias for 'page_length'. Maximum number of records to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "None",
+          "description": "Alias for 'page_length'. Maximum number of records to return."
+        },
+        {
+          "name": "run",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "True",
+          "description": "Whether to execute the query against the database. If False, returns the compiled raw SQL query string without executing. Ideal for query debugging and performance inspection."
+        },
+        {
+          "name": "pluck",
+          "type": "str",
+          "structure": "\"name\" OR \"email\"",
+          "optional": true,
+          "default": "None",
+          "description": "Fetch a single column as a flat list of values instead of a list of dictionaries."
+        },
+        {
+          "name": "distinct",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, executes 'SELECT DISTINCT' to return only unique rows across the requested fields."
+        },
+        {
+          "name": "debug",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, prints the compiled SQL query, execution parameters, and execution duration to stdout or server logs."
+        },
+        {
+          "name": "as_list",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Return rows as lists of values instead of dictionaries."
+        },
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "structure": "True",
+          "optional": true,
+          "default": "True",
+          "description": "Bypasses permission checks (always True in get_all)."
+        },
+        {
+          "name": "parent",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "default": "None",
+          "description": "Parent DocType name when querying child table records directly."
         }
       ]
     },
     {
       "name": "get_list",
       "module": "frappe",
-      "signature": "frappe.get_list(doctype: str, filters: dict = None, fields: list[str] = None, order_by: str = None, limit_page_length: int = 20) -> list[Document]",
-      "returnType": "list[dict]",
-      "returnDescription": "List of record dictionaries filtered by the active user's permissions.",
-      "docstring": "Fetches a list of records while strictly enforcing the current user's role and permission rules. Use this for user-facing lists and portal views.",
-      "example": "todos = frappe.get_list(\"ToDo\", filters={\"status\": \"Open\"}, fields=[\"name\", \"description\"])",
+      "signature": "frappe.get_list(doctype: str, filters: dict | list = None, fields: list[str] = None, or_filters: dict | list = None, order_by: str = None, group_by: str = None, start: int = 0, page_length: int = 20, run: bool = True, pluck: str = None, distinct: bool = False, debug: bool = False) -> list[dict] | list[Any] | str",
+      "returnType": "list[dict] | list[Any] | str",
+      "returnDescription": "List of record dictionaries filtered by the active user's permissions. If pluck is set, returns a flat list of values. If run=False, returns the compiled raw SQL query string.",
+      "docstring": "Fetches a list of records while strictly enforcing the current user's role and permission rules. Supports AND/OR filters, aggregation grouping, pagination (start & page_length), and raw SQL inspection via run=False.",
+      "example": "# 1. Standard query with filters, fields, and sorting:\ntodos = frappe.get_list(\n    \"ToDo\",\n    filters={\"status\": \"Open\", \"allocated_to\": frappe.session.user},\n    fields=[\"name\", \"description\", \"priority\"],\n    order_by=\"priority desc, modified desc\",\n    page_length=20\n)\n\n# 2. Advanced filtering with or_filters (status is Open OR priority is Urgent):\nurgent_tasks = frappe.get_list(\n    \"Task\",\n    filters={\"project\": \"ERP-ROLLOUT\"},\n    or_filters=[\n        [\"status\", \"=\", \"Open\"],\n        [\"priority\", \"=\", \"Urgent\"]\n    ],\n    fields=[\"name\", \"subject\", \"status\", \"priority\"]\n)\n\n# 3. Aggregation and GROUP BY (e.g. employee count per department):\ndept_stats = frappe.get_list(\n    \"Employee\",\n    fields=[\"department\", \"count(name) as total_employees\"],\n    group_by=\"department\",\n    order_by=\"total_employees desc\"\n)\n\n# 4. Pagination using start (offset) and page_length:\npage_2_leads = frappe.get_list(\n    \"Lead\",\n    filters={\"status\": \"Lead\"},\n    fields=[\"name\", \"lead_name\", \"email_id\"],\n    start=20,\n    page_length=20,\n    order_by=\"creation desc\"\n)\n\n# 5. Dry-run query inspection with run=False (returns raw SQL string):\nsql_query = frappe.get_list(\n    \"Customer\",\n    filters={\"disabled\": 0},\n    fields=[\"name\", \"customer_name\"],\n    run=False\n)\nprint(\"Generated SQL Query:\", sql_query)\n\n# 6. Pluck single column into a flat Python list:\nopen_ticket_ids = frappe.get_list(\"Issue\", filters={\"status\": \"Open\"}, pluck=\"name\")",
       "parameters": [
         {
           "name": "doctype",
           "type": "str",
-          "structure": "\"Employee\"",
+          "structure": "\"Sales Invoice\"",
           "optional": false,
           "description": "Target DocType name to query."
         },
         {
           "name": "filters",
           "type": "dict | list",
-          "structure": "{\"status\": \"Active\"}",
+          "structure": "{\"status\": \"Open\"} OR [[\"status\", \"=\", \"Open\"], [\"docstatus\", \"<\", 2]]",
           "optional": true,
-          "description": "Filter conditions dictionary or list of filter arrays."
+          "default": "None",
+          "description": "AND filtering conditions dictionary or list of filter triplets [field, op, value]."
+        },
+        {
+          "name": "or_filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Open\", \"priority\": \"Urgent\"} OR [[\"status\", \"=\", \"Open\"], [\"priority\", \"=\", \"Urgent\"]]",
+          "optional": true,
+          "default": "None",
+          "description": "OR filtering conditions. Matches records satisfying ANY condition in this set. Combined with 'filters' via logical AND (i.e. filters AND (or_filters))."
         },
         {
           "name": "fields",
-          "type": "list[str]",
-          "structure": "[\"name\", \"employee_name\"]",
+          "type": "list[str] | str",
+          "structure": "[\"name\", \"customer\", \"grand_total\"] OR [\"status\", \"count(name) as total\"]",
           "optional": true,
-          "description": "List of fieldnames to fetch (defaults to [\"name\"])."
+          "default": "[\"name\"]",
+          "description": "List of DocFields or SQL aggregate expressions to fetch (defaults to [\"name\"])."
         },
         {
           "name": "order_by",
           "type": "str",
-          "structure": "\"creation desc\"",
+          "structure": "\"creation desc\" OR \"posting_date desc, grand_total asc\"",
           "optional": true,
+          "default": "\"idx asc, modified desc\"",
           "description": "Sorting column order string."
+        },
+        {
+          "name": "group_by",
+          "type": "str",
+          "structure": "\"department\" OR \"customer_group, territory\"",
+          "optional": true,
+          "default": "None",
+          "description": "SQL GROUP BY clause for grouping rows, commonly used with aggregate functions in fields (e.g. count, sum, avg)."
+        },
+        {
+          "name": "start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "0-based record offset / start index to begin retrieving records from for pagination (alias: limit_start)."
+        },
+        {
+          "name": "page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "20",
+          "description": "Maximum number of records to retrieve per page (alias: limit_page_length, limit). Defaults to 20 in Frappe."
+        },
+        {
+          "name": "limit_start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "Alias for 'start'. 0-based offset for pagination."
         },
         {
           "name": "limit_page_length",
           "type": "int",
-          "structure": "50",
+          "structure": "20",
           "optional": true,
           "default": "20",
-          "description": "Number of records to retrieve per page."
+          "description": "Alias for 'page_length'. Number of records to retrieve per page."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "20",
+          "description": "Alias for 'page_length'. Maximum number of records to retrieve."
+        },
+        {
+          "name": "run",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "True",
+          "description": "Whether to execute the query against the database. If False, the query is NOT executed and returns the generated raw SQL query string instead. Ideal for query debugging and performance inspection."
+        },
+        {
+          "name": "pluck",
+          "type": "str",
+          "structure": "\"name\" OR \"email_id\"",
+          "optional": true,
+          "default": "None",
+          "description": "Fetch a single column as a flat list of values instead of a list of dictionaries."
+        },
+        {
+          "name": "distinct",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, executes 'SELECT DISTINCT' to return only unique rows across the requested fields."
+        },
+        {
+          "name": "debug",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, prints the generated SQL statement, execution time, and arguments to the console or server logs."
+        },
+        {
+          "name": "as_list",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Return rows as lists of values instead of dictionaries."
+        },
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Set True to bypass current user permissions (frappe.get_all sets this True by default)."
+        },
+        {
+          "name": "parent",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "default": "None",
+          "description": "Parent DocType name when querying child table records directly."
         }
       ]
     },
@@ -196,7 +410,8 @@
           "name": "alert",
           "type": "bool",
           "optional": true,
-          "description": "If True, displays as floating toast message instead of modal."
+          "description": "If True, displays as floating toast message instead of modal.",
+          "structure": "True | False"
         }
       ]
     },
@@ -221,7 +436,8 @@
           "type": "type[Exception]",
           "optional": true,
           "default": "frappe.ValidationError",
-          "description": "Exception class to raise (e.g. frappe.PermissionError, frappe.DoesNotExistError)."
+          "description": "Exception class to raise (e.g. frappe.PermissionError, frappe.DoesNotExistError).",
+          "structure": "frappe.ValidationError | frappe.PermissionError"
         },
         {
           "name": "title",
@@ -235,7 +451,7 @@
     {
       "name": "enqueue",
       "module": "frappe",
-      "signature": "frappe.enqueue(method: str | callable, queue: str = 'default', timeout: int = 300, is_async: bool = True, now: bool = False, enqueue_after_commit: bool = False, **kwargs) -> str",
+      "signature": "frappe.enqueue(method: str | callable, queue: str = 'default', timeout: int = 300, is_async: bool = True, now: bool = False, enqueue_after_commit: bool = False, **kwargs) -> Job",
       "returnType": "Job",
       "returnDescription": "Background RQ job object.",
       "docstring": "Runs a time-consuming Python function asynchronously in the background worker queue (Redis Queue) so it does not freeze the user interface.",
@@ -269,21 +485,24 @@
           "type": "bool",
           "optional": true,
           "default": "True",
-          "description": "Execute asynchronously via background worker (set False for synchronous testing)."
+          "description": "Execute asynchronously via background worker (set False for synchronous testing).",
+          "structure": "True | False"
         },
         {
           "name": "now",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Execute immediately in current thread instead of queuing."
+          "description": "Execute immediately in current thread instead of queuing.",
+          "structure": "True | False"
         },
         {
           "name": "enqueue_after_commit",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Only push to Redis queue if current database transaction commits successfully."
+          "description": "Only push to Redis queue if current database transaction commits successfully.",
+          "structure": "True | False"
         },
         {
           "name": "kwargs",
@@ -336,7 +555,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Convert Markdown syntax in message body to HTML."
+          "description": "Convert Markdown syntax in message body to HTML.",
+          "structure": "True | False"
         },
         {
           "name": "template",
@@ -357,7 +577,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Queue email in Email Queue for background sending rather than instant transmission."
+          "description": "Queue email in Email Queue for background sending rather than instant transmission.",
+          "structure": "True | False"
         },
         {
           "name": "reference_doctype",
@@ -438,7 +659,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Emit event only after active SQL transaction commits."
+          "description": "Emit event only after active SQL transaction commits.",
+          "structure": "True | False"
         }
       ]
     },
@@ -576,7 +798,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Return binary PDF byte stream instead of raw HTML."
+          "description": "Return binary PDF byte stream instead of raw HTML.",
+          "structure": "True | False"
         }
       ]
     },
@@ -670,7 +893,8 @@
           "type": "int",
           "optional": true,
           "default": "16",
-          "description": "Hash character length."
+          "description": "Hash character length.",
+          "structure": "32"
         }
       ]
     },
@@ -842,7 +1066,8 @@
           "name": "success",
           "type": "bool",
           "optional": true,
-          "description": "Indicator badge style (green for True, red for False)."
+          "description": "Indicator badge style (green for True, red for False).",
+          "structure": "True | False"
         },
         {
           "name": "http_status_code",
@@ -869,7 +1094,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Set to True if guests / unauthenticated public visitors should be allowed to execute this API."
+          "description": "Set to True if guests / unauthenticated public visitors should be allowed to execute this API.",
+          "structure": "True | False"
         },
         {
           "name": "methods",
@@ -883,7 +1109,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Mark output as safe HTML to prevent automatic escaping."
+          "description": "Mark output as safe HTML to prevent automatic escaping.",
+          "structure": "True | False"
         }
       ]
     },
@@ -900,14 +1127,16 @@
           "name": "doc",
           "type": "Document | dict",
           "optional": false,
-          "description": "The source document instance to duplicate."
+          "description": "The source document instance to duplicate.",
+          "structure": "doc | { \"doctype\": \"Customer\", ... }"
         },
         {
           "name": "ignore_no_copy",
           "type": "bool",
           "optional": true,
           "default": "True",
-          "description": "If True, fields marked with \"No Copy\" in DocType schema are skipped and not cloned."
+          "description": "If True, fields marked with \"No Copy\" in DocType schema are skipped and not cloned.",
+          "structure": "True | False"
         }
       ]
     },
@@ -946,7 +1175,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, merges the old record into an existing target record and deletes the old one."
+          "description": "If True, merges the old record into an existing target record and deletes the old one.",
+          "structure": "True | False"
         }
       ]
     },
@@ -978,14 +1208,16 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, bypasses checks for linked records and submitted status."
+          "description": "If True, bypasses checks for linked records and submitted status.",
+          "structure": "True | False"
         },
         {
           "name": "delete_permanently",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, bypasses trash and deletes row permanently from database."
+          "description": "If True, bypasses trash and deletes row permanently from database.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1086,7 +1318,8 @@
           "name": "doc",
           "type": "Document | str",
           "optional": true,
-          "description": "Optional Document instance or document name to evaluate document-level User Permissions."
+          "description": "Optional Document instance or document name to evaluate document-level User Permissions.",
+          "structure": "doc | \"EMP-001\""
         }
       ]
     },
@@ -1118,7 +1351,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, rate-limits per client IP address instead of user session."
+          "description": "If True, rate-limits per client IP address instead of user session.",
+          "structure": "True | False"
         }
       ]
     }
@@ -1231,6 +1465,314 @@
   ],
   "frappe.db": [
     {
+      "name": "get_list",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_list(doctype: str, filters: dict | list = None, fields: list[str] = None, or_filters: dict | list = None, order_by: str = None, group_by: str = None, start: int = 0, page_length: int = 20, run: bool = True, pluck: str = None, distinct: bool = False, debug: bool = False) -> list[dict] | list[Any] | str",
+      "returnType": "list[dict] | list[Any] | str",
+      "returnDescription": "List of record dictionaries filtered by the active user's permissions. If pluck is set, returns a flat list of values. If run=False, returns the compiled raw SQL query string.",
+      "docstring": "Fetches a list of records from the database table via frappe.db while enforcing current user permissions and role security. Supports AND/OR filtering, multi-column ordering, SQL grouping/aggregation, pagination (start & page_length), and raw SQL inspection via run=False.",
+      "example": "# 1. Standard query with filters, fields, and sorting:\ntodos = frappe.db.get_list(\n    \"ToDo\",\n    filters={\"status\": \"Open\", \"allocated_to\": frappe.session.user},\n    fields=[\"name\", \"description\", \"priority\"],\n    order_by=\"priority desc, modified desc\",\n    page_length=20\n)\n\n# 2. Advanced filtering with or_filters (status is Open OR priority is Urgent):\nurgent_tasks = frappe.db.get_list(\n    \"Task\",\n    filters={\"project\": \"ERP-ROLLOUT\"},\n    or_filters=[\n        [\"status\", \"=\", \"Open\"],\n        [\"priority\", \"=\", \"Urgent\"]\n    ],\n    fields=[\"name\", \"subject\", \"status\", \"priority\"]\n)\n\n# 3. Aggregation and GROUP BY (e.g. employee count per department):\ndept_stats = frappe.db.get_list(\n    \"Employee\",\n    fields=[\"department\", \"count(name) as total_employees\"],\n    group_by=\"department\",\n    order_by=\"total_employees desc\"\n)\n\n# 4. Pagination using start (offset) and page_length:\npage_2_leads = frappe.db.get_list(\n    \"Lead\",\n    filters={\"status\": \"Lead\"},\n    fields=[\"name\", \"lead_name\", \"email_id\"],\n    start=20,\n    page_length=20,\n    order_by=\"creation desc\"\n)\n\n# 5. Dry-run query inspection with run=False (returns raw SQL string):\nsql_query = frappe.db.get_list(\n    \"Customer\",\n    filters={\"disabled\": 0},\n    fields=[\"name\", \"customer_name\"],\n    run=False\n)\nprint(\"Generated SQL Query:\", sql_query)\n\n# 6. Pluck single column into a flat Python list:\nopen_ticket_ids = frappe.db.get_list(\"Issue\", filters={\"status\": \"Open\"}, pluck=\"name\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": false,
+          "description": "Target DocType name to query."
+        },
+        {
+          "name": "filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Open\"} OR [[\"status\", \"=\", \"Open\"], [\"docstatus\", \"<\", 2]]",
+          "optional": true,
+          "default": "None",
+          "description": "AND filtering conditions dictionary or list of filter triplets [field, op, value]."
+        },
+        {
+          "name": "or_filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Open\", \"priority\": \"Urgent\"} OR [[\"status\", \"=\", \"Open\"], [\"priority\", \"=\", \"Urgent\"]]",
+          "optional": true,
+          "default": "None",
+          "description": "OR filtering conditions. Matches records satisfying ANY condition in this set. Combined with 'filters' via logical AND (i.e. filters AND (or_filters))."
+        },
+        {
+          "name": "fields",
+          "type": "list[str] | str",
+          "structure": "[\"name\", \"customer\", \"grand_total\"] OR [\"status\", \"count(name) as total\"]",
+          "optional": true,
+          "default": "[\"name\"]",
+          "description": "List of DocFields or SQL aggregate expressions to fetch (defaults to [\"name\"])."
+        },
+        {
+          "name": "order_by",
+          "type": "str",
+          "structure": "\"creation desc\" OR \"posting_date desc, grand_total asc\"",
+          "optional": true,
+          "default": "\"idx asc, modified desc\"",
+          "description": "Sorting column order string."
+        },
+        {
+          "name": "group_by",
+          "type": "str",
+          "structure": "\"department\" OR \"customer_group, territory\"",
+          "optional": true,
+          "default": "None",
+          "description": "SQL GROUP BY clause for grouping rows, commonly used with aggregate functions in fields (e.g. count, sum, avg)."
+        },
+        {
+          "name": "start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "0-based record offset / start index to begin retrieving records from for pagination (alias: limit_start)."
+        },
+        {
+          "name": "page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "20",
+          "description": "Maximum number of records to retrieve per page (alias: limit_page_length, limit). Defaults to 20 in Frappe."
+        },
+        {
+          "name": "limit_start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "Alias for 'start'. 0-based offset for pagination."
+        },
+        {
+          "name": "limit_page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "20",
+          "description": "Alias for 'page_length'. Number of records to retrieve per page."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "20",
+          "description": "Alias for 'page_length'. Maximum number of records to retrieve."
+        },
+        {
+          "name": "run",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "True",
+          "description": "Whether to execute the query against the database. If False, the query is NOT executed and returns the generated raw SQL query string instead. Ideal for query debugging and performance inspection."
+        },
+        {
+          "name": "pluck",
+          "type": "str",
+          "structure": "\"name\" OR \"email_id\"",
+          "optional": true,
+          "default": "None",
+          "description": "Fetch a single column as a flat list of values instead of a list of dictionaries."
+        },
+        {
+          "name": "distinct",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, executes 'SELECT DISTINCT' to return only unique rows across the requested fields."
+        },
+        {
+          "name": "debug",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, prints the generated SQL statement, execution time, and arguments to the console or server logs."
+        },
+        {
+          "name": "as_list",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Return rows as lists of values instead of dictionaries."
+        },
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Set True to bypass current user permissions (frappe.get_all sets this True by default)."
+        },
+        {
+          "name": "parent",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "default": "None",
+          "description": "Parent DocType name when querying child table records directly."
+        }
+      ]
+    },
+    {
+      "name": "get_all",
+      "module": "frappe.db",
+      "signature": "frappe.db.get_all(doctype: str, filters: dict | list = None, fields: list[str] = None, or_filters: dict | list = None, order_by: str = None, group_by: str = None, start: int = 0, page_length: int = None, run: bool = True, pluck: str = None, distinct: bool = False, debug: bool = False) -> list[dict] | list[Any] | str",
+      "returnType": "list[dict] | list[Any] | str",
+      "returnDescription": "List of dictionaries matching your query filter without permission checks. If pluck is set, returns a flat list of field values. If run=False, returns the compiled raw SQL query string.",
+      "docstring": "Fetches records directly from the database without evaluating user permissions (faster than get_list). Ideal for backend scripts, APIs, background jobs, and system tasks.",
+      "example": "# 1. Fetch active employees with specific fields:\nemployees = frappe.db.get_all(\n    \"Employee\",\n    filters={\"status\": \"Active\", \"department\": \"Sales\"},\n    fields=[\"name\", \"employee_name\", \"cell_number\"],\n    order_by=\"employee_name asc\",\n    page_length=50\n)\n\n# 2. Query with or_filters (matches either condition):\nurgent_leads = frappe.db.get_all(\n    \"Lead\",\n    filters={\"source\": \"Website\"},\n    or_filters=[\n        [\"status\", \"=\", \"Open\"],\n        [\"lead_name\", \"like\", \"%VIP%\"]\n    ],\n    fields=[\"name\", \"lead_name\", \"email_id\"]\n)\n\n# 3. Aggregation and GROUP BY (e.g. count per department):\ndept_counts = frappe.db.get_all(\n    \"Employee\",\n    fields=[\"department\", \"count(name) as total_employees\"],\n    group_by=\"department\",\n    order_by=\"total_employees desc\"\n)\n\n# 4. Pagination using start (offset) and page_length:\npaged_records = frappe.db.get_all(\n    \"Customer\",\n    fields=[\"name\", \"customer_name\"],\n    start=40,\n    page_length=20,\n    order_by=\"creation desc\"\n)\n\n# 5. Inspection / Dry-run with run=False (returns raw SQL string):\nsql_query = frappe.db.get_all(\n    \"Sales Invoice\",\n    filters={\"docstatus\": 1},\n    fields=[\"name\", \"grand_total\"],\n    run=False\n)\nprint(\"Raw SQL:\", sql_query)\n\n# 6. Pluck single column into a flat Python list:\nactive_emails = frappe.db.get_all(\"User\", filters={\"enabled\": 1}, pluck=\"email\")",
+      "parameters": [
+        {
+          "name": "doctype",
+          "type": "str",
+          "structure": "\"Employee\"",
+          "optional": false,
+          "description": "The DocType name to query."
+        },
+        {
+          "name": "filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Active\"} OR [[\"status\", \"=\", \"Active\"], [\"creation\", \">\", \"2026-01-01\"]]",
+          "optional": true,
+          "default": "None",
+          "description": "AND filtering conditions as key-value pairs or list of filter triplets [field, op, value]."
+        },
+        {
+          "name": "or_filters",
+          "type": "dict | list",
+          "structure": "{\"status\": \"Open\", \"priority\": \"Urgent\"} OR [[\"status\", \"=\", \"Open\"], [\"priority\", \"=\", \"Urgent\"]]",
+          "optional": true,
+          "default": "None",
+          "description": "OR filtering conditions. Matches records satisfying ANY condition in this set. Combined with 'filters' via logical AND (i.e. filters AND (or_filters))."
+        },
+        {
+          "name": "fields",
+          "type": "list[str] | str",
+          "structure": "[\"name\", \"employee_name\", \"department\"] OR [\"department\", \"count(name) as total\"]",
+          "optional": true,
+          "default": "[\"name\"]",
+          "description": "List of field names or aggregate expressions with aliases to retrieve. Defaults to [\"name\"]."
+        },
+        {
+          "name": "order_by",
+          "type": "str",
+          "structure": "\"creation desc\" OR \"modified desc, name asc\"",
+          "optional": true,
+          "default": "\"idx asc, modified desc\"",
+          "description": "Sorting column and direction."
+        },
+        {
+          "name": "group_by",
+          "type": "str",
+          "structure": "\"department\" OR \"customer_group, territory\"",
+          "optional": true,
+          "default": "None",
+          "description": "SQL GROUP BY clause for aggregate queries. Typically combined with aggregate functions in 'fields' (e.g. count, sum, avg)."
+        },
+        {
+          "name": "start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "0-based offset / record index to begin retrieving records from for pagination (alias: limit_start)."
+        },
+        {
+          "name": "page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "None",
+          "description": "Maximum number of records to return per query / page (alias: limit_page_length, limit)."
+        },
+        {
+          "name": "limit_start",
+          "type": "int",
+          "structure": "0",
+          "optional": true,
+          "default": "0",
+          "description": "Alias for 'start'. 0-based offset for pagination."
+        },
+        {
+          "name": "limit_page_length",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "None",
+          "description": "Alias for 'page_length'. Maximum number of records to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "structure": "20",
+          "optional": true,
+          "default": "None",
+          "description": "Alias for 'page_length'. Maximum number of records to return."
+        },
+        {
+          "name": "run",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "True",
+          "description": "Whether to execute the query against the database. If False, returns the compiled raw SQL query string without executing. Ideal for query debugging and performance inspection."
+        },
+        {
+          "name": "pluck",
+          "type": "str",
+          "structure": "\"name\" OR \"email\"",
+          "optional": true,
+          "default": "None",
+          "description": "Fetch a single column as a flat list of values instead of a list of dictionaries."
+        },
+        {
+          "name": "distinct",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, executes 'SELECT DISTINCT' to return only unique rows across the requested fields."
+        },
+        {
+          "name": "debug",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "If True, prints the compiled SQL query, execution parameters, and execution duration to stdout or server logs."
+        },
+        {
+          "name": "as_list",
+          "type": "bool",
+          "structure": "True | False",
+          "optional": true,
+          "default": "False",
+          "description": "Return rows as lists of values instead of dictionaries."
+        },
+        {
+          "name": "ignore_permissions",
+          "type": "bool",
+          "structure": "True",
+          "optional": true,
+          "default": "True",
+          "description": "Bypasses permission checks (always True in get_all)."
+        },
+        {
+          "name": "parent",
+          "type": "str",
+          "structure": "\"Sales Invoice\"",
+          "optional": true,
+          "default": "None",
+          "description": "Parent DocType name when querying child table records directly."
+        }
+      ]
+    },
+    {
       "name": "get_value",
       "module": "frappe.db",
       "signature": "frappe.db.get_value(doctype: str, filters: str | dict | list, fieldname: str | list[str] = 'name', as_dict: bool = False) -> Any | dict | None",
@@ -1266,7 +1808,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Set True to return the result as a dictionary."
+          "description": "Set True to return the result as a dictionary.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1306,7 +1849,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, returns records as dictionaries with field names as keys."
+          "description": "If True, returns records as dictionaries with field names as keys.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1352,14 +1896,15 @@
           "type": "bool",
           "optional": true,
           "default": "True",
-          "description": "Update modified timestamp and modified_by user columns."
+          "description": "Update modified timestamp and modified_by user columns.",
+          "structure": "True | False"
         }
       ]
     },
     {
       "name": "get_single_value",
       "module": "frappe.db",
-      "signature": "frappe.db.get_single_value(doctype: str, fieldname: str, cache: bool = True) -> Any",
+      "signature": "frappe.db.get_single_value(doctype: str, fieldname: str, as_dict: bool = False) -> Any",
       "returnType": "Any",
       "returnDescription": "The value of the requested field in the Single DocType.",
       "docstring": "Fetches a single setting or field value from a Single DocType (e.g. `System Settings`, `Stock Settings`, `HR Settings`). Single DocTypes store all their field settings as key-value pairs in the `tabSingles` table.",
@@ -1380,11 +1925,12 @@
           "description": "Fieldname to fetch."
         },
         {
-          "name": "cache",
+          "name": "as_dict",
           "type": "bool",
           "optional": true,
-          "default": "True",
-          "description": "Whether to read from memory cache for maximum speed."
+          "default": "False",
+          "description": "Whether to return the result as a dictionary (for dict/json fields).",
+          "structure": "True | False"
         }
       ]
     },
@@ -1471,24 +2017,6 @@
       ]
     },
     {
-      "name": "truncate",
-      "module": "frappe.db",
-      "signature": "frappe.db.truncate(doctype: str)",
-      "returnType": "None",
-      "returnDescription": "None.",
-      "docstring": "Empties and truncates an entire DocType database table.",
-      "example": "frappe.db.truncate(\"Activity Log\")",
-      "parameters": [
-        {
-          "name": "doctype",
-          "type": "str",
-          "structure": "\"Activity Log\"",
-          "optional": false,
-          "description": "Target DocType name."
-        }
-      ]
-    },
-    {
       "name": "delete",
       "module": "frappe.db",
       "signature": "frappe.db.delete(doctype: str, filters: str | dict = None)",
@@ -1546,7 +2074,8 @@
           "name": "query",
           "type": "str",
           "optional": false,
-          "description": "SQL query string with %(param)s placeholders."
+          "description": "SQL query string with %(param)s placeholders.",
+          "structure": "\"SELECT name, status FROM tabTask WHERE status = %(status)s\""
         },
         {
           "name": "values",
@@ -1560,7 +2089,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Set True to return rows as dictionaries."
+          "description": "Set True to return rows as dictionaries.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1594,7 +2124,8 @@
           "name": "save_point_name",
           "type": "str",
           "optional": false,
-          "description": "Savepoint name"
+          "description": "Savepoint name",
+          "structure": "\"sp_1\""
         }
       ],
       "returnDescription": "None (Releases active savepoint)."
@@ -1654,13 +2185,15 @@
           "name": "doctype",
           "type": "str",
           "optional": false,
-          "description": "DocType name"
+          "description": "DocType name",
+          "structure": "\"Customer\""
         },
         {
           "name": "column",
           "type": "str",
           "optional": false,
-          "description": "Column name"
+          "description": "Column name",
+          "structure": "\"customer_name\""
         }
       ],
       "returnDescription": "SQL column type string (e.g. varchar, int, decimal)."
@@ -1868,14 +2401,16 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Bypass permission validation check during insert."
+          "description": "Bypass permission validation check during insert.",
+          "structure": "True | False"
         },
         {
           "name": "ignore_links",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Bypass dynamic Link and Foreign Key validation checks."
+          "description": "Bypass dynamic Link and Foreign Key validation checks.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1893,7 +2428,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, ignores role permission checks."
+          "description": "If True, ignores role permission checks.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1970,7 +2506,8 @@
           "type": "bool",
           "optional": true,
           "default": "True",
-          "description": "If True, updates the `modified` and `modified_by` audit fields of the document."
+          "description": "If True, updates the `modified` and `modified_by` audit fields of the document.",
+          "structure": "True | False"
         }
       ]
     },
@@ -1988,14 +2525,16 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, strips keys with None / null values from the resulting dictionary."
+          "description": "If True, strips keys with None / null values from the resulting dictionary.",
+          "structure": "True | False"
         },
         {
           "name": "no_default_fields",
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "If True, omits standard metadata fields like `name`, `owner`, `creation`, `modified`."
+          "description": "If True, omits standard metadata fields like `name`, `owner`, `creation`, `modified`.",
+          "structure": "True | False"
         }
       ]
     },
@@ -2057,7 +2596,8 @@
           "name": "tag",
           "type": "str",
           "optional": false,
-          "description": "Tag name"
+          "description": "Tag name",
+          "structure": "\"urgent\""
         }
       ],
       "returnDescription": "None (Attaches tag to record)."
@@ -2178,7 +2718,8 @@
           "name": "days",
           "type": "int",
           "optional": false,
-          "description": "Number of days to add (use negative number to subtract)."
+          "description": "Number of days to add (use negative number to subtract).",
+          "structure": "7"
         }
       ]
     },
@@ -2195,13 +2736,15 @@
           "name": "date",
           "type": "str | datetime",
           "optional": false,
-          "description": "Base date."
+          "description": "Base date.",
+          "structure": "\"2026-09-05\" | datetime.date.today()"
         },
         {
           "name": "months",
           "type": "int",
           "optional": false,
-          "description": "Number of months to add."
+          "description": "Number of months to add.",
+          "structure": "3"
         }
       ]
     },
@@ -2218,14 +2761,16 @@
           "name": "val",
           "type": "Any",
           "optional": false,
-          "description": "Value to convert."
+          "description": "Value to convert.",
+          "structure": "123.45 | \"123.45\""
         },
         {
           "name": "precision",
           "type": "int",
           "optional": true,
           "default": "2",
-          "description": "Rounding decimal places."
+          "description": "Rounding decimal places.",
+          "structure": "2"
         }
       ]
     },
@@ -2242,7 +2787,8 @@
           "name": "val",
           "type": "Any",
           "optional": false,
-          "description": "Value to convert to integer."
+          "description": "Value to convert to integer.",
+          "structure": "123 | \"123\""
         }
       ]
     },
@@ -2290,7 +2836,8 @@
           "name": "val",
           "type": "Any",
           "optional": false,
-          "description": "Value to convert"
+          "description": "Value to convert",
+          "structure": "123 | None"
         }
       ],
       "returnDescription": "Clean string representation (None becomes empty string '')."
@@ -2307,7 +2854,8 @@
           "name": "date_str",
           "type": "str | datetime",
           "optional": true,
-          "description": "Date string"
+          "description": "Date string",
+          "structure": "\"2026-09-05\""
         }
       ],
       "returnDescription": "Python datetime.date object."
@@ -2324,7 +2872,8 @@
           "name": "datetime_str",
           "type": "str",
           "optional": true,
-          "description": "Timestamp string"
+          "description": "Timestamp string",
+          "structure": "\"2026-09-05 14:30:00\""
         }
       ],
       "returnDescription": "Python datetime.datetime object."
@@ -2381,7 +2930,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Return formatted string instead of datetime object."
+          "description": "Return formatted string instead of datetime object.",
+          "structure": "True | False"
         }
       ],
       "returnDescription": "Modified datetime or date string offset by given units."
@@ -2398,13 +2948,15 @@
           "name": "datetime1",
           "type": "str | datetime",
           "optional": false,
-          "description": "End timestamp"
+          "description": "End timestamp",
+          "structure": "\"2026-09-05 15:00:00\""
         },
         {
           "name": "datetime2",
           "type": "str | datetime",
           "optional": false,
-          "description": "Start timestamp"
+          "description": "Start timestamp",
+          "structure": "\"2026-09-05 14:00:00\""
         }
       ],
       "returnDescription": "Seconds elapsed between two timestamps (float)."
@@ -2421,13 +2973,15 @@
           "name": "date1",
           "type": "str | datetime",
           "optional": false,
-          "description": "End date"
+          "description": "End date",
+          "structure": "\"2026-09-10\""
         },
         {
           "name": "date2",
           "type": "str | datetime",
           "optional": false,
-          "description": "Start date"
+          "description": "Start date",
+          "structure": "\"2026-09-01\""
         }
       ],
       "returnDescription": "Day count difference (date1 - date2 as integer)."
@@ -2484,7 +3038,8 @@
           "type": "bool",
           "optional": true,
           "default": "False",
-          "description": "Raise InvalidEmailAddress exception on validation failure."
+          "description": "Raise InvalidEmailAddress exception on validation failure.",
+          "structure": "True | False"
         }
       ],
       "returnDescription": "Normalized email address string."
@@ -2545,13 +3100,15 @@
           "name": "doc",
           "type": "Document | str",
           "optional": true,
-          "description": "Document instance or ID."
+          "description": "Document instance or ID.",
+          "structure": "doc | \"EMP-001\""
         },
         {
           "name": "user",
           "type": "str",
           "optional": true,
-          "description": "User ID."
+          "description": "User ID.",
+          "structure": "\"user@example.com\""
         }
       ]
     },
@@ -2586,7 +3143,8 @@
           "name": "user",
           "type": "str",
           "optional": true,
-          "description": "User ID."
+          "description": "User ID.",
+          "structure": "\"user@example.com\""
         }
       ]
     }
@@ -2659,7 +3217,8 @@
           "name": "doc",
           "type": "Document",
           "optional": true,
-          "description": "Document instance used for dynamic field replacements in naming format strings."
+          "description": "Document instance used for dynamic field replacements in naming format strings.",
+          "structure": "doc"
         }
       ]
     },
@@ -2690,7 +3249,8 @@
           "name": "doc",
           "type": "Document",
           "optional": true,
-          "description": "The document instance being discarded."
+          "description": "The document instance being discarded.",
+          "structure": "doc"
         }
       ]
     },
@@ -2714,7 +3274,8 @@
           "name": "doc",
           "type": "Document",
           "optional": true,
-          "description": "Document instance to extract field values from if `{fieldname}` tokens exist."
+          "description": "Document instance to extract field values from if `{fieldname}` tokens exist.",
+          "structure": "doc"
         }
       ]
     },
@@ -2731,7 +3292,8 @@
           "name": "doc",
           "type": "Document",
           "optional": false,
-          "description": "The document instance whose name needs to be assigned."
+          "description": "The document instance whose name needs to be assigned.",
+          "structure": "doc"
         }
       ]
     },
@@ -2775,7 +3337,8 @@
           "name": "generator",
           "type": "callable",
           "optional": true,
-          "description": "Function to execute and populate cache if key does not exist in Redis."
+          "description": "Function to execute and populate cache if key does not exist in Redis.",
+          "structure": "lambda: fetch_fresh_data()"
         },
         {
           "name": "expires_in_sec",
@@ -2870,7 +3433,8 @@
           "name": "value",
           "type": "Any",
           "optional": false,
-          "description": "Data to store."
+          "description": "Data to store.",
+          "structure": "\"data\" | { \"k\": \"v\" }"
         }
       ]
     },

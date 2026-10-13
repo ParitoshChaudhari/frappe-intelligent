@@ -220,6 +220,84 @@ frappe.ui.form.on("Employee", {
     assert.ok(labels.includes('form'));
   });
 
+  it('should provide named parameter completions for Python function calls', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/api.py',
+      getText: () => 'frappe.get_all(',
+      lineAt: () => ({ text: 'frappe.get_all(' }),
+    };
+
+    const position = new vscode.Position(0, 'frappe.get_all('.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('doctype='));
+    assert.ok(labels.includes('filters='));
+    assert.ok(labels.includes('fields='));
+    assert.ok(labels.includes('order_by='));
+    assert.ok(labels.includes('limit_page_length='));
+    assert.ok(labels.includes('pluck='));
+  });
+
+  it('should provide named parameter completions for frappe.db.get_value in Python', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/api.py',
+      getText: () => 'frappe.db.get_value(',
+      lineAt: () => ({ text: 'frappe.db.get_value(' }),
+    };
+
+    const position = new vscode.Position(0, 'frappe.db.get_value('.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('doctype='));
+    assert.ok(labels.includes('fieldname='));
+    assert.ok(labels.includes('filters='));
+    assert.ok(labels.includes('as_dict='));
+  });
+
+  it('should provide named parameter completions for frappe.db.get_list in Python', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/api.py',
+      getText: () => 'frappe.db.get_list(',
+      lineAt: () => ({ text: 'frappe.db.get_list(' }),
+    };
+
+    const position = new vscode.Position(0, 'frappe.db.get_list('.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('doctype='));
+    assert.ok(labels.includes('filters='));
+    assert.ok(labels.includes('or_filters='));
+    assert.ok(labels.includes('fields='));
+    assert.ok(labels.includes('order_by='));
+    assert.ok(labels.includes('group_by='));
+    assert.ok(labels.includes('start='));
+    assert.ok(labels.includes('page_length='));
+    assert.ok(labels.includes('run='));
+    assert.ok(labels.includes('pluck='));
+  });
+
+  it('should provide parameter completions for frm.set_value in JavaScript', () => {
+    const mockDoc: any = {
+      fileName: '/apps/frappe/frappe/public/js/form.js',
+      getText: () => 'frm.set_value(',
+      lineAt: () => ({ text: 'frm.set_value(' }),
+    };
+
+    const position = new vscode.Position(0, 'frm.set_value('.length);
+    const items = provider.provideCompletionItems(mockDoc, position) as vscode.CompletionItem[];
+
+    assert.ok(items.length > 0);
+    const labels = items.map((i) => i.label);
+    assert.ok(labels.includes('fieldname'));
+    assert.ok(labels.includes('value'));
+  });
+
   it('should clean up tracked symbols when removeFile is called', () => {
     const index = IndexManager.getInstance();
     const fakeFilePath = '/apps/frappe/frappe/doctype/test_doc/test_doc.json';

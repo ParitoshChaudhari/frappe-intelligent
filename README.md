@@ -23,19 +23,21 @@ It brings deep multi-app AST analysis, accurate context-aware autocompletion, re
 
 ### 2. 🧠 Context-Aware Multi-Line Autocompletion
 - **Multi-Line Scope Reconstructor**: Seamlessly infers arguments and context even when function calls span across multiple lines with indentation and line breaks.
-- **Inferred Child Table Row Completion**: Automatically infers child table types and autocompletes fields when iterating in Python (`for item in self.items: item.`) or JavaScript (`let row = frm.add_child('items'); row.`).
+- **Named Keyword Parameter Autocompletion**: Auto-suggests function parameters (`doctype=`, `filters=`, `or_filters=`, `fields=`, `order_by=`, `group_by=`, `start=`, `page_length=`, `limit_page_length=`, `pluck=`, `as_dict=`, `ignore_permissions=`) inside Python and JavaScript calls with rich type signatures, format structures, and defaults.
+- **Inferred Child Table Row Completion**: Automatically infers child table types and autocompletes fields when iterating in Python (`for item in self.items: item.`) or JavaScript (`let row = frm.add_child('items'); row.` and `locals[cdt][cdn].`).
 - **`frm.fields_dict` Completion**: Instant fieldname autocompletion when typing `frm.fields_dict.` or `cur_frm.fields_dict.`.
-- **Server Python APIs**: `frappe.get_doc`, `frappe.get_all`, `frappe.db.get_value`, `frappe.db.set_value`, `frappe.qb`, `frappe.utils`, `frappe.enqueue`, `frappe.sendmail`, `frappe.publish_realtime`, `frappe.cache`, and `Document` controller lifecycle methods.
-- **Client JavaScript APIs**: `frappe.call`, `frappe.xcall`, `frappe.msgprint`, `frappe.show_alert`, `frappe.confirm`, `frappe.prompt`, `frappe.ui.Dialog`, `frm`, `grid`, `page`, and `frappe.listview_settings`.
-- **Jinja Print Formats & Templates**: Filters (`| format_currency`, `| format_date`), helper methods, and iteration properties (`doc.items`).
-- **70+ Frappe Hooks**: Autocomplete for `doc_events`, `override_whitelisted_methods`, `scheduler_events`, `fixtures`, `portal_menu_items`, and more.
+- **Server Python APIs**: `frappe.get_doc`, `frappe.get_all`, `frappe.get_list`, `frappe.db.get_list`, `frappe.db.get_value`, `frappe.db.set_value`, `frappe.qb`, `frappe.utils`, `frappe.enqueue`, `frappe.sendmail`, `frappe.publish_realtime`, `frappe.cache`, `frappe.model.naming`, and `Document` controller lifecycle methods.
+- **Client JavaScript APIs**: `frappe.call`, `frappe.xcall`, `frappe.model`, `locals[cdt][cdn]`, `frappe.msgprint`, `frappe.show_alert`, `frappe.confirm`, `frappe.prompt`, `frappe.ui` (`Dialog`, `form`, `toolbar`, `keys`, `misc`), `frm`, `grid`, `page`, and `frappe.listview_settings`.
+- **Jinja Print Formats & Templates**: Filters (`| format_currency`, `| format_date`), helper methods (`frappe.format_value`, `frappe.get_fullname`), translation tags (`{{ _("...") }}`), and iteration properties (`doc.items`) with inline usage examples.
+- **70+ Frappe Hooks**: Autocomplete and snippets for `doc_events`, `override_whitelisted_methods`, `scheduler_events`, `fixtures`, `portal_menu_items`, and more.
 
 ---
 
 ### 3. 📖 Deep Hover Documentation & Signature Help
-- **Parameter Structure Guides**: Explicit templates showing required dictionaries (`{ "key": "value" }`) or lists (`[ "item" ]`).
-- **Return Type & Meaning**: Clear explanations of return types and data structures.
-- **Omnipresent Signature Help**: Displays active parameter indicators, parameter types, and defaults in real time.
+- **Parameter Structure Guides**: Explicit templates across all Python, JavaScript, and Form APIs showing required dictionaries (`{ "key": "value" }`), lists (`[ "item" ]`), or scalar formats.
+- **DocType Schema Hover**: Hover over any DocType name string (including multi-word DocTypes like `"Sales Invoice"`) to inspect its module, custom fields, and controller path.
+- **Return Type & Meaning**: Clear explanations of return types, data structures, and executable code examples.
+- **Omnipresent Signature Help**: Displays active parameter indicators, parameter types, and defaults in real time alongside parameter completions.
 
 ---
 
@@ -44,12 +46,12 @@ It brings deep multi-app AST analysis, accurate context-aware autocompletion, re
 - **Infinite Recursion Save Linter**: Flags `self.save()` or `self.insert()` calls inside `validate()`, `before_save()`, or `before_insert()` controller hooks.
 - **SQL Injection Detection**: Warns against string formatting (`f"..."`, `.format()`, `%s`) inside `frappe.db.sql()`.
 - **Transactional Atomicity Linter**: Flags `frappe.db.commit()` inside document lifecycle hooks.
-- **Version Deprecation Matrix**: Flags deprecated APIs across Frappe v13, v14, v15, and v16 with one-click QuickFix CodeActions.
+- **Version Deprecation Matrix**: Flags deprecated APIs and security notices (`flags.ignore_permissions`) across Frappe v13, v14, v15, and v16 with one-click QuickFix `WorkspaceEdit` CodeActions.
 
 ---
 
 ### 5. 🏷️ Strongly-Typed Stub Generator (`.pyi` & `.d.ts`)
-- **Python `.pyi` Stubs**: Generates PEP 561 type stubs with strongly-typed child tables (`items: list['SalesOrderItem']`) for Pylance / Pyright.
+- **Python `.pyi` Stubs**: Generates PEP 561 type stubs with strongly-typed child tables (`items: List['SalesOrderItem']`) for Pylance / Pyright.
 - **Ambient JavaScript `.d.ts` Types**: Generates ambient TypeScript definitions (`interface SalesOrderDoc { ... }`) for instant client-side autocomplete.
 
 ---
@@ -57,12 +59,14 @@ It brings deep multi-app AST analysis, accurate context-aware autocompletion, re
 ### 6. 🎨 Webview Form Layout Previewer & Frappe Explorer
 - **Interactive Form Previewer**: Live graphical preview of DocType form layouts directly from `.json` schema files, supporting **Tab Breaks**, **Section Breaks**, **Column Breaks**, and **Child Table** columns.
 - **Frappe Explorer Sidebar**: Interactive tree view displaying installed Apps, Modules, DocTypes, and DocFields in the Activity Bar.
-- **Active Site Selector**: Switch active Frappe site directly from the status bar or Command Palette.
+- **Active Site Selector**: Auto-discovers bench sites (`sites/` and `currentsite.txt`) and lets you switch the active Frappe site directly from the status bar or Command Palette.
 
 ---
 
-### 7. ⚙️ Bench CLI Commands & Code Scaffolding
-Execute bench commands without leaving VS Code:
+### 7. ⚙️ Bench CLI Commands, Interactive Runner & Code Scaffolding
+Execute and auto-complete bench commands without leaving VS Code:
+- `Frappe: Run Bench Command...` (Interactive QuickPick runner for 30+ categorized bench CLI commands with automatic `--site` injection and app/DocType prompts)
+- `Frappe: Setup Bench Terminal Shell Auto-completion` (Configures native Click `<Tab>` completion in `~/.zshrc`, `~/.bashrc`, `fish`, and integrated terminals)
 - `Frappe: Bench Clear Cache`
 - `Frappe: Bench Migrate`
 - `Frappe: Bench Restart`

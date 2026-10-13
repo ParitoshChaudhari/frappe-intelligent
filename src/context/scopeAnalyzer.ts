@@ -10,7 +10,8 @@ export class ScopeAnalyzer {
     lineText: string,
     characterPosition: number,
     fileInfo: FileClassificationResult,
-    fullContent?: string
+    fullContent?: string,
+    lineNumber: number = -1
   ): CursorScopeContext {
     const textBeforeCursorOnLine = lineText.substring(0, characterPosition);
     const trimmedBefore = textBeforeCursorOnLine.trimStart();
@@ -51,7 +52,7 @@ export class ScopeAnalyzer {
     // 2. Reconstruct Multi-line Text Before Cursor if inside an unclosed expression
     let textBeforeCursor = textBeforeCursorOnLine;
     if (fullContent && !textBeforeCursorOnLine.includes('(') && !textBeforeCursorOnLine.includes('{')) {
-      const reconstructed = this.reconstructMultiLineContext(fullContent, lineText, characterPosition);
+      const reconstructed = this.reconstructMultiLineContext(fullContent, lineNumber, characterPosition, lineText);
       if (reconstructed) {
         textBeforeCursor = reconstructed;
       }
@@ -82,13 +83,19 @@ export class ScopeAnalyzer {
 
         // Child Table Row in JavaScript (e.g. `row.`, `d.`, `child.`, `locals[cdt][cdn].`)
         if (fileInfo.isClientCode) {
+          let contentUpToCursor = fullContent || lineText;
+          if (fullContent && lineNumber >= 0) {
+            const lines = fullContent.split(/\r?\n/);
+            contentUpToCursor = lines.slice(0, lineNumber + 1).join('\n');
+          }
+
           if (context.targetObject === 'locals[cdt][cdn]' || context.targetObject.startsWith('locals[')) {
-            const inferredDt = this.inferChildTableDocTypeFromJs(fullContent || lineText, fileInfo.doctypeName || '', 'row') || fileInfo.doctypeName;
+            const inferredDt = this.inferChildTableDocTypeFromJs(contentUpToCursor, fileInfo.doctypeName || '', 'row') || fileInfo.doctypeName;
             if (inferredDt) {
               context.childTableRowDocType = inferredDt;
             }
           } else if (['row', 'd', 'child', 'item'].includes(context.targetObject)) {
-            const inferredDt = this.inferChildTableDocTypeFromJs(fullContent || lineText, fileInfo.doctypeName || '', context.targetObject);
+            const inferredDt = this.inferChildTableDocTypeFromJs(contentUpToCursor, fileInfo.doctypeName || '', context.targetObject);
             if (inferredDt) {
               context.childTableRowDocType = inferredDt;
             }
@@ -139,9 +146,8 @@ export class ScopeAnalyzer {
 
         // If in frappe.xcall("method", ...)
         if (callee === 'frappe.xcall') {
-          if (firstArgMatch) {
-            context.targetDocTypeInCall = firstArgMatch[1];
-          }
+          // xcall first argument is a method, not a DocType
+          context.targetDocTypeInCall = undefined;
         }
 
         return context;
@@ -183,20 +189,14 @@ export class ScopeAnalyzer {
 
   public static reconstructMultiLineContext(
     fullContent: string,
-    currentLineText: string,
-    characterPosition: number
+    lineNumber: number,
+    characterPosition: number,
+    currentLineText: string
   ): string | null {
     const lines = fullContent.split(/\r?\n/);
-    let targetLineIdx = -1;
+    const targetLineIdx = lineNumber;
 
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i] === currentLineText) {
-        targetLineIdx = i;
-        break;
-      }
-    }
-
-    if (targetLineIdx <= 0) return null;
+    if (targetLineIdx < 0 || targetLineIdx >= lines.length) return null;
 
     let combined = currentLineText.substring(0, characterPosition);
     let parenDepth = 0;
@@ -261,10 +261,10 @@ export class ScopeAnalyzer {
 
     // 2. Match JS: `const row = locals[cdt][cdn];` inside child table trigger
     const localsRegex = new RegExp(`(?:let|const|var)?\\s*${rowVarName}\\s*=\\s*locals\\[cdt\\]\\[cdn\\]`);
-    if (localsRegex.test(content) || rowVarName === 'row') {
-      const formOnMatch = content.match(/frappe\.ui\.form\.on\(\s*['"]([^'"]+)['"]/);
-      if (formOnMatch && formOnMatch[1]) {
-        return formOnMatch[1];
+    if (localsRegex.test(content)) {
+      const matches = [...content.matchAll(/frappe\.ui\.form\.on\(\s*['"]([^'"]+)['"]/g)];
+      if (matches.length > 0) {
+        return matches[matches.length - 1][1];
       }
     }
 

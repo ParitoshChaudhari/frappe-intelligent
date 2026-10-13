@@ -13,7 +13,7 @@ export class JsStubGenerator {
     lines.push('declare namespace frappe {');
     lines.push('    function call(options: { method: string; args?: Record<string, any>; callback?: (r: { message: any }) => void; error?: (r: any) => void; freeze?: boolean; freeze_message?: string; async?: boolean }): Promise<any>;');
     lines.push('    function msgprint(msg: string | { message: string; title?: string; indicator?: string }): void;');
-    lines.push('    function throw(msg: string, title?: string): void;');
+    lines.push('    function throw_error(msg: string, title?: string): void; // maps to frappe.throw()');
     lines.push('    function show_alert(message: string | { message: string; indicator?: string }, seconds?: number): void;');
     lines.push('    function confirm(message: string, if_yes: () => void, if_no?: () => void): void;');
     lines.push('    function prompt(fields: any[], callback: (values: any) => void, title?: string, primary_action_label?: string): void;');
@@ -24,7 +24,7 @@ export class JsStubGenerator {
     lines.push('');
     lines.push('    namespace db {');
     lines.push('        function get_value(doctype: string, name: string | object, fieldname: string | string[]): Promise<any>;');
-    lines.push('        function get_list(doctype: string, args?: { fields?: string[]; filters?: any; limit?: number }): Promise<any[]>;');
+    lines.push('        function get_list(doctype: string, args?: { fields?: string[]; filters?: any; or_filters?: any; order_by?: string; group_by?: string; start?: number; page_length?: number; limit?: number }): Promise<any[]>;');
     lines.push('        function set_value(doctype: string, name: string, fieldname: string | object, value?: any): Promise<any>;');
     lines.push('        function count(doctype: string, args?: { filters?: any }): Promise<number>;');
     lines.push('        function exists(doctype: string, name: string | object): Promise<boolean>;');
@@ -100,10 +100,12 @@ export class JsStubGenerator {
     lines.push('');
     lines.push('// Generate Typed DocType Interfaces');
     for (const dt of doctypes) {
-      const safeName = dt.name.replace(/[^a-zA-Z0-9]/g, '');
+      let safeName = dt.name.replace(/[^a-zA-Z0-9]/g, '');
+      if (/^\d/.test(safeName)) safeName = '_' + safeName;
       lines.push(`interface ${safeName}Doc {`);
       for (const f of dt.fields) {
-        const jsType = f.fieldtype === 'Int' || f.fieldtype === 'Check' ? 'number' : (f.fieldtype === 'Float' || f.fieldtype === 'Currency' || f.fieldtype === 'Percent' ? 'number' : 'string');
+        if (!f.fieldname || ['Section Break', 'Column Break', 'Tab Break', 'HTML', 'Fold', 'Heading'].includes(f.fieldtype)) continue;
+        const jsType = f.fieldtype === 'Int' || f.fieldtype === 'Check' ? 'number' : (f.fieldtype === 'Float' || f.fieldtype === 'Currency' || f.fieldtype === 'Percent' ? 'number' : (f.fieldtype === 'Table' || f.fieldtype === 'Table MultiSelect' ? 'any[]' : 'string'));
         lines.push(`    ${f.fieldname}?: ${jsType};`);
       }
       lines.push('}');

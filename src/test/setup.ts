@@ -202,6 +202,18 @@ const mockVscode = {
   CodeActionKind: {
     QuickFix: 'quickfix',
   },
+  WorkspaceEdit: class {
+    _edits: any[] = [];
+    replace(uri: any, range: any, newText: string): void {
+      this._edits.push({ uri, range, newText });
+    }
+    insert(uri: any, position: any, newText: string): void {
+      this._edits.push({ uri, position, newText });
+    }
+    delete(uri: any, range: any): void {
+      this._edits.push({ uri, range, newText: '' });
+    }
+  },
   CancellationTokenSource: class {
     token: any = {};
   },

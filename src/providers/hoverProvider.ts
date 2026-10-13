@@ -13,11 +13,26 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
     document: vscode.TextDocument,
     position: vscode.Position
   ): vscode.ProviderResult<vscode.Hover> {
-    const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_$.]+/);
-    if (!wordRange) return null;
-
-    const word = document.getText(wordRange);
     const lineText = document.lineAt(position.line).text;
+    let word = '';
+    
+    const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_$.]+/);
+    if (wordRange) {
+      word = document.getText(wordRange);
+    }
+
+    // Check if cursor is inside a quoted string to support spaces (e.g. DocTypes like "Sales Invoice")
+    const quoteMatches = [...lineText.matchAll(/(["'])(.*?)\1/g)];
+    for (const match of quoteMatches) {
+      const start = match.index ?? 0;
+      const end = start + match[0].length;
+      if (position.character >= start && position.character <= end) {
+        word = match[2];
+        break;
+      }
+    }
+
+    if (!word) return null;
     const fileInfo = FileClassifier.classify(document.fileName, document.getText());
     const index = IndexManager.getInstance();
 
@@ -41,11 +56,15 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
     }
 
     // 3. Check if hovering over DocType name string (e.g. "Employee" in `frappe.get_doc("Employee", ...)`)
-    const stringLiteralMatch = lineText.match(/["']([a-zA-Z0-9_ ]+)["']/);
-    if (stringLiteralMatch && stringLiteralMatch[1] === word) {
-      const schema = index.getDocType(word);
-      if (schema) {
-        return new vscode.Hover(this.renderDocTypeHover(schema));
+    const stringMatches = [...lineText.matchAll(/(["'])([a-zA-Z0-9_ ]+)\1/g)];
+    for (const match of stringMatches) {
+      const start = match.index ?? 0;
+      const end = start + match[0].length;
+      if (position.character >= start && position.character <= end && match[2] === word) {
+        const schema = index.getDocType(word);
+        if (schema) {
+          return new vscode.Hover(this.renderDocTypeHover(schema));
+        }
       }
     }
 
@@ -147,6 +166,11 @@ export class FrappeHoverProvider implements vscode.HoverProvider {
     if (word === 'locals' || lineText.includes(`locals[`) || lineText.includes(`locals.`)) {
       const locList = (jsApis as any)['locals'];
       const found = locList?.find((item: any) => item.name === 'locals');
+      if (found) return found;
+    }
+    if (word === 'Dialog' || word === 'frappe.ui.Dialog' || lineText.includes('frappe.ui.Dialog')) {
+      const dList = (jsApis as any)['frappe.ui.Dialog'];
+      const found = dList?.find((item: any) => item.name === 'Dialog');
       if (found) return found;
     }
     if (lineText.includes(`dialog.${word}`) || lineText.includes(`d.${word}`) || lineText.includes(`cur_dialog.${word}`)) {

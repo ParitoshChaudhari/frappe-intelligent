@@ -71,7 +71,7 @@ export class BenchDetector {
   public static discoverBench(workspaceRoot: string, defaultVersion: FrappeVersion = 'v15'): BenchContext {
     const benchRoot = this.findBenchRoot(workspaceRoot) || workspaceRoot;
     const apps = new Map<string, FrappeAppInfo>();
-    const activeAppNames = this.getActiveAppNames(benchRoot);
+    let activeAppNames = this.getActiveAppNames(benchRoot);
 
     const appsDir = path.join(benchRoot, 'apps');
     let frappeVersion: FrappeVersion = defaultVersion;
@@ -107,17 +107,25 @@ export class BenchDetector {
       // Single app workspace
       const appName = path.basename(benchRoot);
       const { version, majorVersion } = VersionDetector.detectAppVersion(benchRoot);
+      const isFrappe = appName.toLowerCase() === 'frappe';
+      
+      if (isFrappe) {
+        frappeVersion = majorVersion;
+      }
+      
       apps.set(appName, {
         name: appName,
         version,
         majorVersion,
         path: benchRoot,
-        isFrappeCore: appName.toLowerCase() === 'frappe',
+        isFrappeCore: isFrappe,
         isErpnext: appName.toLowerCase() === 'erpnext',
         doctypes: new Map(),
         whitelistedMethods: new Map(),
         hooks: new Map(),
       });
+      
+      activeAppNames = [appName];
     }
 
     return {

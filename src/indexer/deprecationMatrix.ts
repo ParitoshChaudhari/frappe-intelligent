@@ -13,7 +13,7 @@ export interface DeprecationRule {
 export class DeprecationMatrix {
   public static readonly RULES: DeprecationRule[] = [
     {
-      pattern: /frappe\.db\.sql\s*\(\s*["'][^"']*%[sdf]/,
+      pattern: /frappe\.db\.sql\s*\(\s*["'][^"']*%\s*\(/,
       deprecatedSince: 'v13',
       removedIn: 'v16',
       message: 'String formatting/interpolation in frappe.db.sql is insecure and deprecated. Use parameterized queries with values dict or tuple.',
@@ -35,6 +35,7 @@ export class DeprecationMatrix {
       pattern: /flags\.ignore_permissions\s*=\s*(?:True|1)/,
       deprecatedSince: 'v14',
       message: '[Security Notice] ignore_permissions bypasses Frappe Role Permissions. Ensure this is guarded and not exposed to arbitrary user inputs.',
+      replacement: 'if frappe.has_permission(doctype, ptype="read", user=frappe.session.user): ...',
     },
     {
       pattern: /frappe\.client\.get_value\(/,
@@ -54,12 +55,6 @@ export class DeprecationMatrix {
       deprecatedSince: 'v14',
       message: 'Using cur_frm directly is an anti-pattern. Use the scoped frm instance passed to the event handler.',
       replacement: 'frm.<method>(...)',
-    },
-    {
-      pattern: /frappe\.db\.get_single_value\(/,
-      deprecatedSince: 'v15',
-      message: 'frappe.db.get_single_value is deprecated in newer versions. Use frappe.db.get_value with DocType name.',
-      replacement: 'frappe.db.get_value(doctype, doctype, fieldname)',
     },
     {
       pattern: /frappe\.msgprint\s*\(\s*['"].*['"]\s*,\s*raise_exception\s*=\s*(?:True|1)\s*\)/,

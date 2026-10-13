@@ -29,6 +29,7 @@ interface BenchCommandItem {
 export class BenchCommands {
   private static terminal: vscode.Terminal | null = null;
   private static completionConfiguredInSession = false;
+  private static currentTerminalCwd = '';
 
   private static readonly BENCH_COMMANDS_REGISTRY: BenchCommandItem[] = [
     // --- Site Operations ---
@@ -326,10 +327,33 @@ export class BenchCommands {
     return trimmed;
   }
 
+  public static sanitizeAppName(name: string): string | null {
+    const trimmed = name.trim();
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed) || trimmed.length > 100) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  public static sanitizeMethodName(method: string): string | null {
+    const trimmed = method.trim();
+    if (!/^[a-zA-Z0-9_.]+$/.test(trimmed) || trimmed.length > 255) {
+      return null;
+    }
+    return trimmed;
+  }
+
   public static registerCommands(context: vscode.ExtensionContext, getBench: () => BenchContext | null): void {
     const siteMgr = SiteManager.getInstance();
 
     context.subscriptions.push(
+      vscode.window.onDidCloseTerminal((t) => {
+        if (t === this.terminal) {
+          this.terminal = null;
+          this.completionConfiguredInSession = false;
+          this.currentTerminalCwd = '';
+        }
+      }),
       // 1. Interactive Bench Command Palette Runner
       vscode.commands.registerCommand('frappeIntelligent.runBenchCommand', async () => {
         const bench = getBench();
@@ -359,7 +383,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchClearCache', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} clear-cache` : 'bench clear-cache';
         this.runInTerminal(bench.benchPath, cmd);
       }),
@@ -367,7 +392,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchMigrate', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} migrate` : 'bench migrate';
         this.runInTerminal(bench.benchPath, cmd);
       }),
@@ -387,7 +413,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchConsole', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} console` : 'bench console';
         this.runInTerminal(bench.benchPath, cmd, true);
       }),
@@ -395,7 +422,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchBackup', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} backup --with-files` : 'bench backup --with-files';
         this.runInTerminal(bench.benchPath, cmd);
       }),
@@ -467,7 +495,12 @@ export class BenchCommands {
           placeHolder: 'e.g. custom_payroll',
         });
         if (!appName) return;
-        this.runInTerminal(bench.benchPath, `bench new-app ${appName}`, true);
+        const sanitized = this.sanitizeAppName(appName);
+        if (!sanitized) {
+          vscode.window.showErrorMessage('Invalid app name. Only letters, numbers, underscores, and dashes are allowed.');
+          return;
+        }
+        this.runInTerminal(bench.benchPath, `bench new-app ${sanitized}`, true);
       }),
 
       vscode.commands.registerCommand('frappeIntelligent.benchGetApp', async () => {
@@ -478,7 +511,12 @@ export class BenchCommands {
           placeHolder: 'https://github.com/frappe/hrms or hrms',
         });
         if (!repoUrl) return;
-        this.runInTerminal(bench.benchPath, `bench get-app "${repoUrl}"`, true);
+        const trimmed = repoUrl.trim();
+        if (/[\s;&|`$><\n\r]/.test(trimmed)) {
+          vscode.window.showErrorMessage('Invalid characters in repository URL or app name.');
+          return;
+        }
+        this.runInTerminal(bench.benchPath, `bench get-app "${trimmed}"`, true);
       }),
 
       vscode.commands.registerCommand('frappeIntelligent.benchInstallApp', async () => {
@@ -504,7 +542,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchListApps', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} list-apps` : 'bench list-apps';
         this.runInTerminal(bench.benchPath, cmd);
       }),
@@ -512,13 +551,19 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchExecute', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const method = await vscode.window.showInputBox({
           prompt: 'Enter Dotted Python Method Path to execute',
           placeHolder: 'e.g. frappe.utils.doctor.diagnose or my_app.tasks.sync',
         });
         if (!method) return;
-        const cmd = site ? `bench --site ${site} execute ${method}` : `bench execute ${method}`;
+        const sanitized = this.sanitizeMethodName(method);
+        if (!sanitized) {
+          vscode.window.showErrorMessage('Invalid Python method path. Only letters, numbers, underscores, and dots are allowed.');
+          return;
+        }
+        const cmd = site ? `bench --site ${site} execute ${sanitized}` : `bench execute ${sanitized}`;
         this.runInTerminal(bench.benchPath, cmd, true);
       }),
 
@@ -531,7 +576,8 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchResetPerms', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const cmd = site ? `bench --site ${site} reset-perms` : 'bench reset-perms';
         this.runInTerminal(bench.benchPath, cmd);
       }),
@@ -539,12 +585,19 @@ export class BenchCommands {
       vscode.commands.registerCommand('frappeIntelligent.benchRunTests', async () => {
         const bench = getBench();
         if (!bench) return;
-        const site = await this.resolveTargetSite(bench, siteMgr);
+        const site = await this.resolveTargetSite(bench, siteMgr, true);
+        if (site === null) return;
         const appOrDocType = await vscode.window.showInputBox({
           prompt: 'Enter App name or DocType to run tests for (leave blank for all)',
           placeHolder: 'e.g. --app hrms or --doctype Employee',
         });
-        const filterFlag = appOrDocType ? ` ${appOrDocType}` : '';
+        if (appOrDocType === undefined) return;
+        const trimmed = appOrDocType.trim();
+        if (trimmed && /[;&|`$><\n\r]/.test(trimmed)) {
+          vscode.window.showErrorMessage('Invalid characters in test filter.');
+          return;
+        }
+        const filterFlag = trimmed ? ` ${trimmed}` : '';
         const cmd = site ? `bench --site ${site} run-tests${filterFlag}` : `bench run-tests${filterFlag}`;
         this.runInTerminal(bench.benchPath, cmd, true);
       }),
@@ -639,11 +692,7 @@ export class BenchCommands {
     if (cmdItem.requiresApp) {
       const appName = await this.promptAppName(bench);
       if (!appName) return;
-      if (cmdItem.command.includes('--app')) {
-        finalCmd = `bench ${cmdItem.command} ${appName}`;
-      } else {
-        finalCmd = `bench ${cmdItem.command} ${appName}`;
-      }
+      finalCmd = `bench ${cmdItem.command} ${appName}`;
     }
 
     // Handle DocType parameter
@@ -659,12 +708,19 @@ export class BenchCommands {
         prompt: cmdItem.needsCustomInput.prompt,
         placeHolder: cmdItem.needsCustomInput.placeholder,
       });
-      if (!input) return;
-      finalCmd = `bench ${cmdItem.command} ${input.trim()}`;
+      if (input === undefined) return;
+      const trimmedInput = input.trim();
+      if (trimmedInput && /[;&|`$><\n\r]/.test(trimmedInput)) {
+        vscode.window.showErrorMessage('Invalid characters in command parameter.');
+        return;
+      }
+      finalCmd = `bench ${cmdItem.command} ${trimmedInput}`;
     }
 
     if (targetSite) {
-      if (finalCmd.startsWith('bench ')) {
+      if (cmdItem.command === 'drop-site') {
+        finalCmd = `bench drop-site ${targetSite}`;
+      } else if (finalCmd.startsWith('bench ')) {
         const subcommand = finalCmd.substring(6);
         finalCmd = `bench --site ${targetSite} ${subcommand}`;
       }
@@ -707,16 +763,18 @@ export class BenchCommands {
       });
 
       if (!picked) return null;
-      if (picked.label.startsWith('$(dash)')) return null;
+      if (picked.label.startsWith('$(dash)')) return '';
       return this.sanitizeSiteName(picked.label);
     }
 
     const manualSite = await vscode.window.showInputBox({
-      prompt: 'Enter Frappe Site name (leave blank for default)',
+      prompt: isOptional ? 'Enter Frappe Site name (leave blank for bench default)' : 'Enter Frappe Site name',
       placeHolder: 'e.g. sitename.localhost',
     });
 
-    return manualSite ? this.sanitizeSiteName(manualSite) : null;
+    if (manualSite === undefined) return null;
+    if (manualSite.trim() === '' && isOptional) return '';
+    return this.sanitizeSiteName(manualSite);
   }
 
   private static async promptAppName(bench: BenchContext): Promise<string | null> {
@@ -839,21 +897,24 @@ export class BenchCommands {
   }
 
   public static runInTerminal(cwd: string, command: string, focus = false): void {
-    if (!this.terminal || this.terminal.exitStatus !== undefined) {
+    if (!this.terminal || this.terminal.exitStatus !== undefined || (this.currentTerminalCwd && this.currentTerminalCwd !== cwd)) {
+      if (this.terminal && this.terminal.exitStatus === undefined) {
+        this.terminal.dispose();
+      }
+      this.currentTerminalCwd = cwd;
       this.terminal = vscode.window.createTerminal({
         name: 'Frappe Bench',
         cwd,
       });
+      this.completionConfiguredInSession = false;
 
       // Inject interactive shell completion for active session
-      if (!this.completionConfiguredInSession) {
-        const shell = process.env.SHELL || '';
-        const sourceCmd = shell.includes('zsh')
-          ? 'eval "$(_BENCH_COMPLETE=zsh_source bench 2>/dev/null)"'
-          : 'eval "$(_BENCH_COMPLETE=bash_source bench 2>/dev/null)"';
-        this.terminal.sendText(`if command -v bench >/dev/null 2>&1; then ${sourceCmd}; fi`, true);
-        this.completionConfiguredInSession = true;
-      }
+      const shell = process.env.SHELL || '';
+      const sourceCmd = shell.includes('zsh')
+        ? 'eval "$(_BENCH_COMPLETE=zsh_source bench 2>/dev/null)"'
+        : 'eval "$(_BENCH_COMPLETE=bash_source bench 2>/dev/null)"';
+      this.terminal.sendText(`if command -v bench >/dev/null 2>&1; then ${sourceCmd}; fi`, true);
+      this.completionConfiguredInSession = true;
     }
 
     this.terminal.show(!focus);

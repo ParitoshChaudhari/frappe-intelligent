@@ -91,10 +91,10 @@ export class FrappeDiagnosticsProvider {
       // 1. Transactional Linter & Recursive Save Linter in Python controllers
       if (fileInfo.isServerCode && fileInfo.fileType === 'doctype_controller_py') {
         const methodMatch = text.match(/^\s+def\s+([a-zA-Z0-9_]+)\s*\(/);
-        if (methodMatch) {
+        if (methodMatch && indent <= 4) {
           currentMethodName = methodMatch[1];
           insideDocMethod = ['validate', 'before_save', 'on_submit', 'before_insert', 'on_cancel', 'before_validate'].includes(currentMethodName);
-        } else if (text.startsWith('class ') || (text.startsWith('def ') && !text.startsWith(' '))) {
+        } else if (text.startsWith('class ') || (text.startsWith('def ') && !text.startsWith(' ')) || indent <= 4) {
           insideDocMethod = false;
           currentMethodName = '';
         }
@@ -141,6 +141,9 @@ export class FrappeDiagnosticsProvider {
       if (text.includes('frappe') || text.includes('cur_frm')) {
         const deprecations = DeprecationMatrix.getDeprecationsForVersion(version, text);
         for (const dep of deprecations) {
+          if (dep.pattern.source.includes('cur_frm') && fileInfo.fileType !== 'doctype_form_js') {
+            continue;
+          }
           const diagnostic = new vscode.Diagnostic(
             line.range,
             `[Frappe ${version}] Deprecation Warning: ${dep.message}` + (dep.replacement ? ` (Suggested: ${dep.replacement})` : ''),

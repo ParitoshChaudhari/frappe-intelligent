@@ -51,7 +51,7 @@ describe('Upgraded Frappe Intelligent Features Test Suite', () => {
     "`;
 
     const fileInfo = FileClassifier.classify('sales_order.py', multiLineCode);
-    const scope = ScopeAnalyzer.analyze('    "', 5, fileInfo, multiLineCode);
+    const scope = ScopeAnalyzer.analyze('    "', 5, fileInfo, multiLineCode, 3);
 
     assert.strictEqual(scope.callContext?.callee, 'frappe.db.get_value');
     assert.strictEqual(scope.callContext?.argIndex, 2);
@@ -156,7 +156,7 @@ describe('Upgraded Frappe Intelligent Features Test Suite', () => {
     assert.ok(schema);
 
     const stub = PyStubGenerator.generateDocTypeStub(schema);
-    assert.ok(stub.includes("items: list['SalesOrderItem']"));
+    assert.ok(stub.includes("items: List['SalesOrderItem']"));
     assert.ok(stub.includes('customer: str'));
   });
 

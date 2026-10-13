@@ -171,7 +171,7 @@ export class ScaffoldCommands {
 
 
   public static escapeStringLiteral(str: string): string {
-    return str.replace(/["\\]/g, '\\$&').replace(/\r?\n/g, ' ');
+    return str.replace(/['"\\]/g, '\\$&').replace(/\r?\n/g, ' ');
   }
 
   public static generateReportPy(reportName: string, doctype: string): string {
@@ -536,6 +536,17 @@ def get_context(context):
     for (const f of files) {
       const safeFileName = path.basename(f.fileName);
       const fullPath = path.join(targetDir, safeFileName);
+      if (fs.existsSync(fullPath)) {
+        const choice = await vscode.window.showWarningMessage(
+          `File "${safeFileName}" already exists in the target directory. Do you want to overwrite it?`,
+          { modal: true },
+          'Overwrite',
+          'Skip'
+        );
+        if (choice !== 'Overwrite') {
+          continue;
+        }
+      }
       fs.writeFileSync(fullPath, f.content, 'utf8');
       const doc = await vscode.workspace.openTextDocument(fullPath);
       await vscode.window.showTextDocument(doc);

@@ -164,9 +164,10 @@ export class FrappeTreeProvider implements vscode.TreeDataProvider<FrappeTreeIte
 
       // Fields
       for (const field of schema.fields) {
+        const displayName = field.label || field.fieldname || `[${field.fieldtype}]`;
         items.push(
           new FrappeTreeItem(
-            field.label || field.fieldname,
+            displayName,
             'field',
             vscode.TreeItemCollapsibleState.None,
             element.appName,

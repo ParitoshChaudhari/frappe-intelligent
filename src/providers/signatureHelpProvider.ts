@@ -16,7 +16,7 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
     let textBeforeCursor = lineText.substring(0, position.character);
 
     if (!textBeforeCursor.includes('(')) {
-      const reconstructed = ScopeAnalyzer.reconstructMultiLineContext(fullText, lineText, position.character);
+      const reconstructed = ScopeAnalyzer.reconstructMultiLineContext(fullText, position.line, position.character, lineText);
       if (reconstructed) {
         textBeforeCursor = reconstructed;
       }
@@ -30,7 +30,7 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
     const activeParam = ScopeAnalyzer.countArgumentIndex(rawArgs);
 
     const fileInfo = FileClassifier.classify(document.fileName, fullText);
-    const apiSymbol = this.findApiSymbol(callee, fileInfo.isServerCode);
+    const apiSymbol = FrappeSignatureHelpProvider.findApiSymbol(callee, fileInfo.isServerCode);
 
     if (!apiSymbol || !apiSymbol.parameters || apiSymbol.parameters.length === 0) return null;
 
@@ -58,7 +58,7 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
     return help;
   }
 
-  private findApiSymbol(callee: string, isServer: boolean): any | null {
+  public static findApiSymbol(callee: string, isServer: boolean): any | null {
     const index = IndexManager.getInstance();
 
     // 1. Exact Callee Routing based on prefix
@@ -153,13 +153,6 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
         const found = list.find((item: any) => item.name === methodName);
         if (found) return found;
       }
-    } else if (callee.startsWith('frappe.')) {
-      const methodName = callee.replace(/^frappe\./, '');
-      const list = isServer ? (pythonApis as any)['frappe'] : (jsApis as any)['frappe'];
-      if (Array.isArray(list)) {
-        const found = list.find((item: any) => item.name === methodName);
-        if (found) return found;
-      }
     } else if (callee.startsWith('frappe.web_form.')) {
       const methodName = callee.replace(/^frappe\.web_form\./, '');
       const list = (jsApis as any)['frappe.web_form'];
@@ -202,11 +195,10 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
         const found = list.find((item: any) => item.name === methodName);
         if (found) return found;
       }
-    } else if (callee.startsWith('frappe.ui.form.')) {
-      const methodName = callee.replace(/^frappe\.ui\.form\./, '');
-      const list = (jsApis as any)['frappe.ui.form'];
+    } else if (callee === 'frappe.ui.Dialog' || callee === 'Dialog') {
+      const list = (jsApis as any)['frappe.ui.Dialog'];
       if (Array.isArray(list)) {
-        const found = list.find((item: any) => item.name === methodName);
+        const found = list.find((item: any) => item.name === 'Dialog');
         if (found) return found;
       }
     } else if (callee.startsWith('frappe.ui.Dialog.') || callee.startsWith('dialog.') || callee.startsWith('d.') || callee.startsWith('cur_dialog.')) {
@@ -216,10 +208,24 @@ export class FrappeSignatureHelpProvider implements vscode.SignatureHelpProvider
         const found = list.find((item: any) => item.name === methodName);
         if (found) return found;
       }
+    } else if (callee.startsWith('frappe.ui.form.')) {
+      const methodName = callee.replace(/^frappe\.ui\.form\./, '');
+      const list = (jsApis as any)['frappe.ui.form'];
+      if (Array.isArray(list)) {
+        const found = list.find((item: any) => item.name === methodName);
+        if (found) return found;
+      }
     } else if (callee.startsWith('locals')) {
       const list = (jsApis as any)['locals'];
       if (Array.isArray(list)) {
         const found = list.find((item: any) => item.name === 'locals');
+        if (found) return found;
+      }
+    } else if (callee.startsWith('frappe.')) {
+      const methodName = callee.replace(/^frappe\./, '');
+      const list = isServer ? (pythonApis as any)['frappe'] : (jsApis as any)['frappe'];
+      if (Array.isArray(list)) {
+        const found = list.find((item: any) => item.name === methodName);
         if (found) return found;
       }
     }

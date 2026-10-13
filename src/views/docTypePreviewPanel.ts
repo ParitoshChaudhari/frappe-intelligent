@@ -24,7 +24,7 @@ export class DocTypePreviewPanel {
     const panel = vscode.window.createWebviewPanel(
       'frappeDocTypePreview',
       'Frappe Form Preview',
-      column || vscode.ViewColumn.Beside,
+      vscode.ViewColumn.Beside,
       {
         enableScripts: false, // Security: Disabled JavaScript execution inside form preview
         retainContextWhenHidden: true,
@@ -46,7 +46,7 @@ export class DocTypePreviewPanel {
     const schema = DocTypeIndexer.parseDocTypeJson(schemaPath);
     if (!schema) return;
 
-    this._panel.title = `Form Preview: ${this.escapeHtml(schema.name)}`;
+    this._panel.title = `Form Preview: ${schema.name}`;
     this._panel.webview.html = this.getHtmlForWebview(schema);
   }
 
@@ -179,8 +179,12 @@ export class DocTypePreviewPanel {
     for (const field of fields) {
       if (field.fieldtype === 'Tab Break') {
         const tabLabel = this.escapeHtml(field.label || 'Tab');
-        currentTab = { label: tabLabel, fields: [] };
-        tabs.push(currentTab);
+        if (currentTab.fields.length === 0) {
+          currentTab.label = tabLabel;
+        } else {
+          currentTab = { label: tabLabel, fields: [] };
+          tabs.push(currentTab);
+        }
         continue;
       }
       currentTab.fields.push(field);

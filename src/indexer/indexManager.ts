@@ -4,7 +4,7 @@ import { BenchContext, DocTypeSchema, FrappeApiSymbol, FrappeField, FrappeImport
 import { BenchDetector } from '../core/benchDetector';
 import { DocTypeIndexer } from './doctypeIndexer';
 import { PyIndexer, PyParsedClass } from './pyIndexer';
-import { JsIndexer } from './jsIndexer';
+import { JsIndexer, JsClientHandler } from './jsIndexer';
 
 export class IndexManager {
   private static instance: IndexManager;
@@ -14,6 +14,8 @@ export class IndexManager {
   private allPyClasses = new Map<string, PyParsedClass>();
   private allCustomFields = new Map<string, FrappeField[]>();
   private allImportSymbols = new Map<string, FrappeImportSymbol>();
+  private allJsFormHandlers = new Map<string, JsClientHandler>();
+  private allJsFunctions = new Map<string, FrappeApiSymbol>();
   private knownFilePaths = new Set<string>();
   private fileMtimes = new Map<string, number>();
 
@@ -23,6 +25,8 @@ export class IndexManager {
   private fileToPyClasses = new Map<string, Set<string>>();
   private fileToCustomFields = new Map<string, Set<string>>();
   private fileToImportSymbols = new Map<string, Set<string>>();
+  private fileToJsHandlers = new Map<string, Set<string>>();
+  private fileToJsFunctions = new Map<string, Set<string>>();
 
   public static getInstance(): IndexManager {
     if (!IndexManager.instance) {
@@ -313,7 +317,16 @@ export class IndexManager {
   }
 
   private indexJsFile(filePath: string): void {
-    JsIndexer.parseJsFile(filePath);
+    const result = JsIndexer.parseJsFile(filePath);
+    for (const handler of result.formHandlers) {
+      const key = `${handler.doctype}:${handler.eventName}:${filePath}`;
+      this.allJsFormHandlers.set(key, handler);
+      this.trackFileSymbol(this.fileToJsHandlers, filePath, key);
+    }
+    for (const [funcName, symbol] of result.functions) {
+      this.allJsFunctions.set(funcName, symbol);
+      this.trackFileSymbol(this.fileToJsFunctions, filePath, funcName);
+    }
   }
 
   private mergeCustomFields(docTypeName: string, fields: FrappeField[]): void {
@@ -348,7 +361,7 @@ export class IndexManager {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '__pycache__' || entry.name === '.frappe') {
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '__pycache__' || entry.name === '.frappe' || entry.name === 'env' || entry.name === 'venv' || entry.name === '.venv') {
           continue;
         }
         const fullPath = path.join(dir, entry.name);
@@ -367,7 +380,7 @@ export class IndexManager {
     try {
       const entries = await fs.promises.readdir(dir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '__pycache__' || entry.name === '.frappe') {
+        if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '__pycache__' || entry.name === '.frappe' || entry.name === 'env' || entry.name === 'venv' || entry.name === '.venv') {
           continue;
         }
         const fullPath = path.join(dir, entry.name);

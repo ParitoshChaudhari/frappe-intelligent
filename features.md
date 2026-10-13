@@ -23,6 +23,7 @@
 - **Inferred Child Table Row Completion**: Automatically infers child table DocTypes and suggests field completions when iterating:
   - Python: `for item in self.items: item.`
   - JavaScript: `let row = frm.add_child('items'); row.`
+- **Named Keyword Parameter Autocompletion**: Auto-suggests named function arguments (`doctype=`, `filters=`, `fields=`, `order_by=`, `limit_page_length=`, `as_dict=`, `ignore_permissions=`, `pluck=`) inside Python and JavaScript function calls with parameter types and documentation.
 - **`frm.fields_dict` & `cur_frm.fields_dict` Autocomplete**: Instant suggestions for all DocType fields directly from the form field dictionary.
 - **Exact Prefix Routing**: Clean namespace separation (`frappe.db.`, `frappe.utils.`, `frappe.qb.`, `frappe.cache.`, `frappe.model.naming.`, `frm.`, `grid.`, `page.`, `frappe.listview_settings`, `frappe.router.`).
 - **Jinja Print Formats & Templates**: Autocomplete for Jinja filters (`| format_currency`, `| format_date`), Frappe helpers, and iteration objects (`doc.items`).

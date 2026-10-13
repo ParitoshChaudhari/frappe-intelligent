@@ -50,6 +50,37 @@
     ],
     "description": "frappe.get_all query boilerplate"
   },
+  "Database Get List": {
+    "prefix": "frappe-db-get-list",
+    "body": [
+      "${1:records} = frappe.db.get_list(",
+      "\t\"${2:DocType}\",",
+      "\tfilters={${3}},",
+      "\tor_filters={${4}},",
+      "\tfields=[${5:\"name\"}],",
+      "\torder_by=\"${6:creation desc}\",",
+      "\tgroup_by=\"${7:field}\",",
+      "\tstart=${8:0},",
+      "\tpage_length=${9:20}",
+      ")"
+    ],
+    "description": "frappe.db.get_list with filters, or_filters, fields, order_by, group_by, start, page_length"
+  },
+  "Frappe Get List": {
+    "prefix": "frappe-get-list",
+    "body": [
+      "${1:records} = frappe.get_list(",
+      "\t\"${2:DocType}\",",
+      "\tfilters={${3}},",
+      "\tor_filters={${4}},",
+      "\tfields=[${5:\"name\"}],",
+      "\torder_by=\"${6:creation desc}\",",
+      "\tstart=${7:0},",
+      "\tpage_length=${8:20}",
+      ")"
+    ],
+    "description": "frappe.get_list with filters, or_filters, fields, order_by, start, page_length"
+  },
   "Database Get Value": {
     "prefix": "frappe-db-get-value",
     "body": [
